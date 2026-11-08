@@ -1,0 +1,25 @@
+name: selftest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 离线自检（不发请求、不需要 Key）
+        run: node bin/ark.js --selftest
+
+      - name: 校验请求体组装（dry-run）
+        run: |
+          node bin/ark.js video "测试提示词" -R 480p -d 5 --dry-run
+          node bin/ark.js image "测试提示词" --size 1K --dry-run

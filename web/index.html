@@ -1,0 +1,2635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ark · Seedance 控制台</title>
+<style>
+  :root {
+    --bg: #0a0b0e;
+    --panel: #12141a;
+    --panel-2: #171a21;
+    --line: #24272f;
+    --line-2: #2f333d;
+    --text: #e7e9ef;
+    --muted: #8a90a0;
+    --dim: #5f6575;
+    --accent: #6c8cff;
+    --accent-dim: #2b3a6b;
+    --ok: #3ddc97;
+    --warn: #ffb454;
+    --err: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, .mono, input[type="text"], select, textarea {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  .app { display: grid; grid-template-columns: 268px 1fr; min-height: 100vh; }
+
+  /* ---------- 侧栏 ---------- */
+  aside {
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand .dot {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, #6c8cff, #9b6cff);
+    display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff;
+  }
+  .brand b { font-size: 15px; letter-spacing: .2px; }
+  .brand span { color: var(--dim); font-size: 12px; margin-left: auto; }
+
+  .sect { display: flex; flex-direction: column; gap: 8px; }
+  .sect > h3 {
+    margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--dim); font-weight: 600;
+  }
+  .card {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .row + .row { margin-top: 8px; }
+  .k { color: var(--muted); font-size: 12.5px; }
+  .v { font-size: 12.5px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; padding: 2px 8px; border-radius: 99px;
+    border: 1px solid var(--line-2); color: var(--muted);
+  }
+  .pill.ok { color: var(--ok); border-color: #1f4a3a; background: #0f1f19; }
+  .pill.bad { color: var(--warn); border-color: #4a3a1f; background: #1f1a0f; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: block; }
+
+  .keybox { display: flex; gap: 6px; margin-top: 8px; }
+  .keybox input { flex: 1; min-width: 0; }
+
+  input[type="text"], input[type="password"], select, textarea {
+    width: 100%; background: #0e1014; color: var(--text);
+    border: 1px solid var(--line-2); border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; outline: none;
+    transition: border-color .15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; line-height: 1.65; }
+
+  .pricebig { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+  .priceline { color: var(--dim); font-size: 11.5px; margin-top: 2px; }
+  .spark { height: 4px; border-radius: 99px; background: #0e1014; overflow: hidden; margin-top: 10px; }
+  .spark i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #6c8cff, #9b6cff); transition: width .2s; }
+
+  /* ---------- 主区 ---------- */
+  main { padding: 22px 26px 40px; max-width: 1180px; }
+  .grid2 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; align-items: start; }
+  @media (max-width: 1040px) { .grid2 { grid-template-columns: 1fr; } .app { grid-template-columns: 1fr; } aside { position: static; height: auto; } }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px;
+  }
+  .panel + .panel { margin-top: 18px; }
+  .panel h2 {
+    margin: 0 0 12px; font-size: 13px; font-weight: 650; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel h2 small { color: var(--dim); font-weight: 400; font-size: 11.5px; margin-left: auto; }
+
+  .field + .field { margin-top: 14px; }
+  .label { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+  .label b { font-size: 12.5px; font-weight: 600; }
+  .label span { color: var(--dim); font-size: 11.5px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip {
+    border: 1px solid var(--line-2); background: #0e1014; color: var(--muted);
+    padding: 6px 11px; border-radius: 8px; font-size: 12.5px; cursor: pointer;
+    transition: all .15s; user-select: none;
+  }
+  .chip:hover { border-color: #3b4152; color: var(--text); }
+  .chip[aria-pressed="true"] {
+    background: var(--accent-dim); border-color: #4a5fa8; color: #dfe6ff; font-weight: 600;
+  }
+  .chip small { color: inherit; opacity: .62; margin-left: 5px; font-size: 10.5px; }
+  .chip.custom { border-style: dashed; color: var(--dim); }
+  .chip.custom:hover { color: var(--text); }
+  .chip.custom.active { border-style: solid; background: var(--accent-dim); border-color: #4a5fa8; color: #dfe6ff; }
+  .chip-input {
+    width: 96px; padding: 6px 10px; border-radius: 8px; font-size: 12.5px;
+    background: #0e1014; color: var(--text); border: 1px solid var(--accent);
+    outline: none;
+  }
+  .chip-input::placeholder { color: var(--dim); }
+
+  .frames { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .drop {
+    border: 1px dashed var(--line-2); border-radius: 10px; padding: 12px;
+    background: #0e1014; text-align: center; cursor: pointer; position: relative;
+    min-height: 96px; display: grid; place-items: center; transition: border-color .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop p { margin: 0; font-size: 12px; color: var(--dim); }
+  .drop b { display: block; color: var(--muted); font-size: 12.5px; margin-bottom: 3px; }
+  .drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 9px; }
+  .drop .clear {
+    position: absolute; top: 5px; right: 5px; z-index: 2;
+    background: #000a; color: #fff; border: 0; border-radius: 6px;
+    width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;
+  }
+  .drop input { display: none; }
+
+  /* 参考素材 */
+  .refblock { border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; background: #0c0e12; }
+  .refblock + .refblock { margin-top: 9px; }
+  .refhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .refhead b { font-size: 12px; font-weight: 600; }
+  .refhead span { color: var(--dim); font-size: 11px; }
+  .refhead button { margin-left: auto; padding: 4px 10px; font-size: 11.5px; border-radius: 7px; }
+  .thumbs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; }
+  .thumb { position: relative; aspect-ratio: 1; border-radius: 7px; overflow: hidden; border: 1px solid var(--line-2); background: #000; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb button { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border: 0; border-radius: 5px; background: #000b; color: #fff; font-size: 11px; line-height: 1; cursor: pointer; padding: 0; }
+  .thumb .tag { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; color: #dfe6ff; background: #0009; text-align: center; padding: 1px 0; }
+  .reflist { display: flex; flex-direction: column; gap: 6px; }
+  .refitem { display: flex; align-items: center; gap: 8px; background: #0e1014; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; font-size: 11.5px; color: var(--muted); }
+  .refitem .u { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a9b0c2; }
+  .refitem .u.url { color: #9ec2ff; }
+  .refitem button { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 13px; padding: 0 2px; }
+  .refitem button:hover { color: var(--err); }
+  .refadd { display: flex; gap: 6px; margin-top: 7px; }
+  .refadd input { flex: 1; font-size: 11.5px; padding: 6px 9px; }
+  .refadd button { padding: 6px 10px; font-size: 11.5px; white-space: nowrap; }
+  .dropnote { font-size: 10.5px; color: #5b6376; margin-top: 6px; }
+  .refblock.dragover { border-color: var(--accent); background: #101620; }
+  .refprev { margin-top: 6px; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; background: #000; text-align: center; }
+  .refprev video { display: block; width: auto; max-width: 100%; height: auto; max-height: 300px; margin: 0 auto; background: #000; border-radius: 0; }
+  .refprev audio { display: block; width: 100%; padding: 6px; background: #0e1014; }
+  .refitem .u.clickable { cursor: pointer; }
+  .refitem .u.clickable:hover { color: var(--text); text-decoration: underline; }
+  .refitem .sz { color: #5b6376; font-size: 10.5px; white-space: nowrap; }
+  .refitem .pbadge { font-size: 10px; white-space: nowrap; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-2); color: #5b6376; background: #101216; }
+  .refitem .pbadge.ok { color: #7fd88a; border-color: #2c4a33; background: #10241a; }
+  .refitem .pbadge.bad { color: #ff8a8a; border-color: #4a2c2c; background: #241012; }
+  .note { font-size: 11px; color: var(--dim); line-height: 1.6; margin-top: 7px; }
+  .note b { color: var(--warn); font-weight: 500; }
+
+  .toggles { display: flex; flex-wrap: wrap; gap: 16px; }  .tg { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+  .tg input { appearance: none; width: 34px; height: 19px; border-radius: 99px; background: #22262f; position: relative; cursor: pointer; transition: background .18s; margin: 0; flex: none; }
+  .tg input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #8a90a0; transition: all .18s; }
+  .tg input:checked { background: var(--accent-dim); }
+  .tg input:checked::after { left: 17px; background: #cfd8ff; }
+
+  .runbar { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+  button.primary {
+    background: linear-gradient(135deg, #6c8cff, #8a6cff); border: 0; color: #fff;
+    padding: 11px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 650;
+    cursor: pointer; transition: filter .15s; flex: none;
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  button.ghost {
+    background: #0e1014; border: 1px solid var(--line-2); color: var(--muted);
+    padding: 9px 14px; border-radius: 9px; font-size: 12.5px; cursor: pointer;
+  }
+  button.ghost:hover { color: var(--text); border-color: #3b4152; }
+  .hint { color: var(--dim); font-size: 11.5px; }
+
+  /* 日志 */
+  .log {
+    background: #08090c; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; height: 172px; overflow-y: auto;
+    font-size: 12px; line-height: 1.75; color: #9aa1b2;
+  }
+  .log div { white-space: pre-wrap; word-break: break-all; }
+  .log .t { color: var(--dim); margin-right: 8px; }
+  .log .ok { color: var(--ok); }
+  .log .err { color: var(--err); }
+  .log .hl { color: #cfd8ff; }
+
+  /* 高级参数 */
+  .adv { border: 1px solid var(--line); border-radius: 10px; background: #0c0e12; }
+  .adv > summary {
+    cursor: pointer; padding: 10px 12px; font-size: 12.5px; color: var(--muted);
+    list-style: none; display: flex; align-items: center; gap: 7px; user-select: none;
+  }
+  .adv > summary::-webkit-details-marker { display: none; }
+  .adv > summary::before { content: "▸"; color: var(--dim); font-size: 10px; transition: transform .15s; }
+  .adv[open] > summary::before { transform: rotate(90deg); }
+  .adv > summary:hover { color: var(--text); }
+  .advgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 4px; }
+  .advgrid label { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--muted); }
+  .advgrid input, .advgrid select { font-size: 11.5px; padding: 6px 9px; }
+  .advbody { padding: 0 12px 12px; }
+
+  /* 任务记录 */
+  .taskbar { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; flex-wrap: wrap; }
+  .taskbar .chip { padding: 4px 9px; font-size: 11.5px; }
+  .taskbar button { margin-left: auto; padding: 5px 10px; font-size: 11.5px; }
+  .tasklist { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+  .taskrow {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 10px;
+    background: #0e1014; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .taskrow:hover { border-color: var(--line-2); }
+  .taskrow .id { font-size: 10.5px; color: var(--dim); font-family: "SFMono-Regular", Consolas, monospace; }
+  .taskrow .meta { font-size: 11px; color: var(--muted); grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+  .taskrow .st { font-size: 11px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line-2); color: var(--muted); }
+  .taskrow .st.succeeded { color: var(--ok); border-color: #1f4a3a; }
+  .taskrow .st.failed, .taskrow .st.expired { color: var(--err); border-color: #4a1f1f; }
+  .taskrow .st.running, .taskrow .st.queued { color: var(--warn); border-color: #4a3a1f; }
+  .taskrow .st.cancelled { color: var(--dim); }
+  .taskrow .mini { font-size: 10.5px; color: var(--dim); border: 0; background: none; cursor: pointer; padding: 0 3px; }
+  .taskrow .mini:hover { color: var(--err); }
+  .empty { color: var(--dim); font-size: 12px; padding: 12px 2px; }
+
+  /* 结果 */
+  #result { display: none; }
+  #result.on { display: block; }
+  video { width: 100%; border-radius: 10px; background: #000; display: block; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  .meta div { background: #0e1014; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; }
+  .meta .k { font-size: 11px; }
+  .meta .v { font-size: 13px; margin-top: 2px; font-weight: 600; }
+  .pathtext {
+    margin-top: 10px; font-size: 11.5px; color: var(--dim); word-break: break-all;
+    background: #0e1014; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  .banner {
+    display: none; gap: 10px; align-items: flex-start;
+    border: 1px solid #4a3a1f; background: #1f1a0f; color: #ffd9a0;
+    border-radius: 10px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 16px;
+  }
+  .banner.on { display: flex; }
+  .banner a { color: #ffd9a0; }
+  .statusdot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); display: inline-block; }
+  .statusdot.run { background: var(--warn); animation: pulse 1.2s infinite; }
+  .statusdot.ok { background: var(--ok); }
+  .statusdot.err { background: var(--err); }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+
+  /* ---------- 模式切换（视频 / 生图） ---------- */
+  .modetabs {
+    display: flex; gap: 4px; width: fit-content; margin-bottom: 16px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 4px;
+  }
+  button.modetab {
+    border: 0; background: transparent; color: var(--muted); font-family: inherit;
+    font-size: 12.5px; font-weight: 600; padding: 7px 18px; border-radius: 8px; cursor: pointer;
+    transition: all .15s;
+  }
+  button.modetab:hover { color: var(--text); }
+  button.modetab.on { background: var(--accent-dim); color: #dfe6ff; }
+
+  /* ---------- 生图产物 ---------- */
+  .imgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .imgcard { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0e1014; }
+  .imgcard img { display: block; width: 100%; cursor: zoom-in; }
+  .imgcard .meta2 { display: flex; justify-content: space-between; gap: 6px; padding: 7px 9px; font-size: 10.5px; color: var(--dim); }
+  .imgcard a { color: var(--accent); text-decoration: none; }
+  .imgcard a:hover { text-decoration: underline; }
+  .imgempty { color: var(--dim); font-size: 12.5px; line-height: 1.9; }
+  .imgcard .acts { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 9px 8px; }
+  .imgcard .acts button {
+    flex: 1 1 auto; font-size: 10px; padding: 4px 6px; border-radius: 6px; white-space: nowrap;
+    border: 1px solid var(--line); background: transparent; color: var(--dim); cursor: pointer; transition: all .15s;
+  }
+  .imgcard .acts button:hover { color: var(--text); border-color: var(--accent); }
+  .imgcard .tagline { padding: 6px 9px; font-size: 10.5px; color: var(--accent); border-top: 1px solid var(--line); }
+
+  /* ---------- 生图历史 ---------- */
+  .hist { display: flex; flex-direction: column; gap: 7px; max-height: 330px; overflow-y: auto; }
+  .histitem { border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; background: #0e1014; cursor: pointer; transition: border-color .15s; }
+  .histitem:hover { border-color: var(--accent); }
+  .histitem .hp {
+    font-size: 11.5px; line-height: 1.55; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .histitem .hm { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 10.5px; color: var(--dim); }
+  .histitem .hm b { color: var(--accent); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="dot">A</div>
+      <b>ark</b>
+      <span>seedance</span>
+    </div>
+
+    <div class="sect">
+      <h3>API Key</h3>
+      <div class="card">
+        <div class="row">
+          <span class="k">状态</span>
+          <span id="keyPill" class="pill bad"><i></i>未配置</span>
+        </div>
+        <div class="row"><span class="k">保存至</span><span class="v mono" style="font-size:11px;color:var(--dim)">~/.ark/config.json</span></div>
+        <div class="keybox">
+          <input id="keyInput" type="text" placeholder="sk-... 粘贴后回车保存" />
+          <button class="ghost" id="keySave">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3 style="display:flex;align-items:center;justify-content:space-between">
+        账户
+        <button class="ghost" id="acctRefresh" style="padding:2px 8px;font-size:11px">查询</button>
+      </h3>
+      <div class="card">
+        <div class="pricebig" id="acctBal" style="font-size:21px">¥ —</div>
+        <div class="priceline" id="acctHint">点「查询」读真实余额（需 Access Key）</div>
+        <div class="row"><span class="k">门槛</span><span class="v" id="acctGate">—</span></div>
+        <div class="row"><span class="k">视频模型</span><span class="v" id="acctActive">—</span></div>
+
+        <div id="akBlock" style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-2)">
+          <button class="ghost" id="akToggle" style="width:100%;padding:5px;font-size:11.5px">
+            配置 Access Key 才能查余额
+          </button>
+          <div id="akForm" style="display:none;margin-top:8px">
+            <input id="akInput" type="text" placeholder="Access Key（AKLT…）" style="margin-bottom:6px" />
+            <input id="skInput" type="password" placeholder="Secret Key" style="margin-bottom:6px" />
+            <button class="ghost" id="akSave" style="width:100%;padding:5px;font-size:11.5px">保存并查询</button>
+            <div class="priceline" style="margin-top:8px;line-height:1.7">
+              两个值都在这里取：<br />
+              <a href="https://console.volcengine.com/iam/keymanage" target="_blank" rel="noopener"
+                 style="color:var(--accent);text-decoration:none">→ 打开火山「访问密钥」管理页</a><br />
+              <span style="color:var(--dim)">新建密钥后立刻复制 Secret Key，它只显示一次</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect" id="sectCost">
+      <h3>本次费用</h3>
+      <div class="card">
+        <div class="pricebig" id="cost">—</div>
+        <div class="priceline" id="costLine">选择参数后估算</div>
+        <div class="spark"><i id="spark"></i></div>
+      </div>
+    </div>
+
+    <div class="sect" id="sectRun">
+      <h3>运行状态</h3>
+      <div class="card">
+        <div class="row"><span class="k">任务</span><span class="v mono" id="taskId" style="font-size:11px">—</span></div>
+        <div class="row"><span class="k">进度</span><span class="v" id="stage"><span class="statusdot"></span> 空闲</span></div>
+        <div class="row"><span class="k">耗时</span><span class="v mono" id="elapsed">0s</span></div>
+        <div class="row"><span class="k">实例</span><span class="v mono" id="instInfo" style="font-size:11px">—</span></div>
+      </div>
+    </div>
+
+    <div class="sect" id="sectCap">
+      <h3>模型能力</h3>
+      <div class="card" id="capCard">
+        <div class="k" style="font-size:11.5px">加载中…</div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3>说明</h3>
+      <div class="card">
+        <div class="k" id="usageNote" style="font-size:11.5px;line-height:1.7">
+          产物自动落到<br /><span class="mono">ark-cli/output/</span><br />
+          留空提示词可只靠首帧出片。
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="modetabs">
+      <button class="modetab on" id="tabVideo" type="button">视频</button>
+      <button class="modetab" id="tabImage" type="button">生图</button>
+    </div>
+
+    <div class="banner" id="banner">
+      <span>⚠️</span>
+      <div>
+        还没有 API Key。到 <a href="https://console.volcengine.com/ark/region:ark+cn-beijing/apikey" target="_blank" rel="noreferrer">火山方舟控制台</a>
+        创建后粘到左下角保存；注意开通视频模型要求账户余额 &gt; 200 元。
+      </div>
+    </div>
+
+    <div class="grid2" id="viewVideo">
+      <div>
+        <div class="panel">
+          <h2>提示词 <small>场景 → 动作三段 → 镜头质感 → 声音清单</small></h2>
+          <div class="field">
+            <textarea id="prompt" rows="7" placeholder="在这里写提示词，或给一张首帧图后留空"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+              <select id="tpl" style="width:auto;flex:none;font-size:11.5px;padding:6px 9px">
+                <option value="">提示词模板…</option>
+              </select>
+              <button class="ghost" id="tplSave" type="button">+ 存为模板</button>
+              <button class="ghost" id="tplDel" type="button">删除</button>
+              <span class="hint" id="charCount">0 字</span>
+              <span class="hint" id="tplHint"></span>
+            </div>
+            <div id="tplNameRow" style="display:none;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+              <input type="text" id="tplName" placeholder="模板名称，回车确认" style="width:220px;font-size:11.5px;padding:6px 9px" />
+              <button class="ghost" id="tplNameOk" type="button">保存</button>
+              <button class="ghost" id="tplNameCancel" type="button">取消</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>模型</b><span>改 ID 只需改 models.js</span></div>
+            <select id="model"></select>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>分辨率</b><span id="resHint">越低越省</span></div>
+            <div class="chips" id="resChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>时长</b><span id="durHint">模型上限 30s；-1 为自动</span></div>
+            <div class="chips" id="durChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>画幅</b><span>首帧/编辑任务强制 adaptive</span></div>
+            <div class="chips" id="ratioChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>首帧 / 尾帧</b><span>可选，本地图自动转 base64</span></div>
+            <div class="frames">
+              <label class="drop" id="dropFirst">
+                <input type="file" accept="image/*" id="fileFirst" />
+                <div><b>首帧</b><p>点击或拖入图片</p></div>
+              </label>
+              <label class="drop" id="dropLast">
+                <input type="file" accept="image/*" id="fileLast" />
+                <div><b>尾帧</b><p>需同时给首帧</p></div>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>参考素材</b><span>给了参考图/视频/音频 → 参考生视频</span></div>
+
+            <div class="refblock">
+              <div class="refhead">
+                <b>参考图</b><span id="refImgCount">0 / 30</span>
+                <button class="ghost" id="addRefImg" type="button">+ 添加</button>
+                <input type="file" accept="image/*" multiple id="fileRefImg" style="display:none" />
+              </div>
+              <div class="thumbs" id="refThumbs"><span class="k" style="font-size:11.5px">还没有参考图</span></div>
+            </div>
+
+            <div class="refblock" id="blockRefVideo">
+              <div class="refhead">
+                <b>参考视频</b><span id="refVideoCount">0 / 10</span>
+                <button class="ghost" id="pickRefVideo" type="button">+ 选本地视频</button>
+              </div>
+              <div class="reflist" id="refVideoList"></div>
+              <div class="refadd">
+                <input type="text" id="refVideoUrl" placeholder="或粘贴公网 URL：https://… mp4/mov" />
+                <button class="ghost" id="addRefVideo" type="button">加 URL</button>
+              </div>
+              <input type="file" accept="video/mp4,video/quicktime" id="fileRefVideo" style="display:none" />
+              <div class="dropnote">也可以把视频文件直接拖到这一块里</div>
+            </div>
+
+            <div class="refblock" id="blockRefAudio">
+              <div class="refhead">
+                <b>参考音频</b><span id="refAudioCount">0 / 10</span>
+                <button class="ghost" id="pickRefAudio" type="button">+ 选本地音频</button>
+              </div>
+              <div class="reflist" id="refAudioList"></div>
+              <div class="refadd">
+                <input type="text" id="refAudioUrl" placeholder="或粘贴公网 URL：https://… wav/mp3" />
+                <button class="ghost" id="addRefAudio" type="button">加 URL</button>
+              </div>
+              <input type="file" accept="audio/wav,audio/mpeg,audio/mp3" id="fileRefAudio" style="display:none" />
+              <div class="dropnote">也可以把音频文件直接拖到这一块里</div>
+            </div>
+
+            <div class="note">
+              参考视频/音频建议用 <b>URL</b>：请求体总大小上限 64MB，本地大文件转 base64 会直接超限。<br />
+              Seedance 2.5 <b>不支持含真人人脸</b>的参考图/视频；参考视频单个 2–30s、&lt;200MB。
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>任务类型</b><span>有参考视频时才需要区分</span></div>
+            <div class="chips" id="taskTypeChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>选项</b></div>
+            <div class="toggles">
+              <label class="tg"><input type="checkbox" id="genAudio" checked /> 生成原生音频</label>
+              <label class="tg"><input type="checkbox" id="watermark" /> AI 水印</label>
+              <label class="tg"><input type="checkbox" id="draft" /> 样片模式（仅 480p）</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <details class="adv">
+              <summary>高级参数 · seed / 机位 / 输出格式 / Webhook / 超时 / 优先级</summary>
+              <div class="advgrid">
+                <label>随机种子 seed<input type="text" id="advSeed" placeholder="留空随机" /></label>
+                <label>输出格式<select id="advFormat"><option value="">mp4（默认）</option><option value="mov">mov（H.264 yuv444p）</option></select></label>
+                <label>超时阈值（小时）<input type="text" id="advExpires" placeholder="48（默认，1–72）" /></label>
+                <label>调度优先级 0–9<input type="text" id="advPriority" placeholder="留空默认，越大越优先" /></label>
+                <label>Webhook 回调 URL<input type="text" id="advCallback" placeholder="https://…（可留空）" /></label>
+                <label>安全标识 safety_identifier<input type="text" id="advSafety" placeholder="可选，风控审计用" /></label>
+              </div>
+              <div class="advbody">
+                <div class="toggles">
+                  <label class="tg"><input type="checkbox" id="advCamera" /> 锁定机位（camera_fixed）</label>
+                  <label class="tg"><input type="checkbox" id="advLastFrame" /> 返回尾帧图（接续下一段）</label>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="runbar">
+            <button class="primary" id="run">生成视频</button>
+            <button class="ghost" id="cancel">重置</button>
+            <span class="hint" id="runHint"></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>日志 <small>等价于 CLI 终端输出</small></h2>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel" id="result">
+          <h2>产物 <small id="fileName"></small></h2>
+          <video id="player" controls playsinline></video>
+          <div class="meta">
+            <div><div class="k">分辨率</div><div class="v" id="mRes">—</div></div>
+            <div><div class="k">画幅</div><div class="v" id="mRatio">—</div></div>
+            <div><div class="k">时长</div><div class="v" id="mDur">—</div></div>
+            <div><div class="k">用量</div><div class="v" id="mTok">—</div></div>
+          </div>
+          <div class="pathtext" id="savePath"></div>
+          <div id="draftAction" style="display:none;margin-top:11px">
+            <button class="primary" id="makeFinal" style="padding:9px 18px;font-size:12.5px">用这个样片出正式片</button>
+            <div class="hint" style="margin-top:6px">样片是 480p 低成本的试片，确认构图与动作后由平台复用参数出正式片</div>
+          </div>
+          <div id="lastFrameBox" style="display:none;margin-top:11px">
+            <img id="lastFrameImg" style="width:100%;border-radius:9px;border:1px solid var(--line)" />
+            <div class="hint" style="margin-top:5px">尾帧图（可作下一段的首帧，接成连续镜头）</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <a class="ghost" id="download" download style="text-decoration:none;display:inline-block">下载到本地</a>
+            <button class="ghost" id="openFolder">复制文件路径</button>
+          </div>
+        </div>
+
+        <div class="panel" id="emptyPanel">
+          <h2>还没有产物</h2>
+          <div class="k" style="font-size:12.5px;line-height:1.8">
+            填好提示词点「生成视频」，任务会先返回 ID，然后每 3 秒查一次状态，
+            成功后自动下载到 <span class="mono">output/</span> 并在这里播放。<br /><br />
+            走的是和 CLI 完全相同的代码路径 —— 这个页面只是 <span class="mono">ark video</span> 的图形外壳。
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>任务记录 <small>官方接口 · 关掉页面也还在</small></h2>
+          <div class="taskbar">
+            <div class="chips" id="filterChips"></div>
+            <button class="ghost" id="refreshTasks">刷新</button>
+          </div>
+          <div class="tasklist" id="taskList"><div class="empty">点「刷新」拉取云端任务</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" id="viewImage" style="display:none">
+      <div>
+        <div class="panel">
+          <h2>生图提示词 <small>Seedream · 同步返回，无需轮询</small></h2>
+
+          <div class="field">
+            <div style="display:flex;gap:8px;margin-bottom:9px;align-items:center;flex-wrap:wrap">
+              <select id="imgTplSelect" style="max-width:240px;font-size:11.5px"><option value="">提示词模板…</option></select>
+              <button class="ghost" id="imgTplSave" type="button">+ 存为模板</button>
+              <button class="ghost" id="imgTplDel" type="button" style="display:none">删除模板</button>
+              <input type="text" id="imgTplName" placeholder="模板名，回车确认" style="display:none;width:170px;font-size:11.5px;padding:6px 9px" />
+            </div>
+            <textarea id="imgPrompt" rows="7" placeholder="描述画面：主体、材质、光线、构图、背景。挂了参考图就描述「要改成什么样」。"></textarea>
+            <div style="display:flex;gap:10px;margin-top:8px;align-items:center;flex-wrap:wrap">
+              <span class="hint" id="imgCharCount">0 字</span>
+              <span class="hint">挂了参考图会自动走图生图，不用切换模式</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>模型</b><span id="imgModelHint">默认 4.0，0.2 元/张</span></div>
+            <select id="imgModel"></select>
+            <input id="imgCustomId" type="text" placeholder="完整 Model ID，例：doubao-seedream-5-0-flash-260915" style="display:none;margin-top:8px" />
+          </div>
+
+          <div class="field">
+            <div class="label"><b>尺寸</b><span id="imgSizeHint">档位是长边，短边按比例折算</span></div>
+            <div class="chips" id="imgSizeChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>比例</b><span>只影响像素分配，不是裁切</span></div>
+            <div class="chips" id="imgRatioChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>张数</b><span id="imgCountHint">要几张就发几次请求</span></div>
+            <div class="chips" id="imgCountChips"></div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>参考图</b><span id="imgRefCount">0 / 14</span></div>
+            <div class="thumbs" id="imgThumbs"><span class="k" style="font-size:11.5px;grid-column:1/-1">还没有参考图（可选）</span></div>
+            <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">
+              <button class="ghost" id="imgPickRef" type="button">+ 选本地图片</button>
+              <button class="ghost" id="imgPasteRef" type="button">粘贴剪贴板</button>
+              <input type="file" accept="image/*" multiple id="imgFileRef" style="display:none" />
+            </div>
+            <div class="dropnote">最多 14 张；可 Ctrl+V 直接贴截图，也可把图片拖进这一格</div>
+          </div>
+
+          <div class="field">
+            <div class="label"><b>选项</b></div>
+            <div class="toggles">
+              <label class="tg"><input type="checkbox" id="imgWatermark" /> AI 水印</label>
+            </div>
+          </div>
+
+          <div class="runbar">
+            <button class="primary" id="imgRun">生成图片</button>
+            <button class="ghost" id="imgCompare">多模型对比</button>
+            <button class="ghost" id="imgReset">重置</button>
+            <span class="hint" id="imgRunHint"></span>
+          </div>
+          <div class="toggles" id="imgCompareBox" style="display:none;margin-top:10px"></div>
+        </div>
+
+        <div class="panel">
+          <h2>日志 <small>与 CLI 等价</small></h2>
+          <div class="log" id="imgLog"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>产物 <small id="imgFileHint"></small></h2>
+          <div class="imgrid" id="imgGrid">
+            <div class="imgempty">
+              还没有图片。<br />
+              填好提示词点「生成图片」，结果会落到
+              <span class="mono">output/images/</span> 并显示在这里。
+            </div>
+          </div>
+          <div class="pathtext" id="imgSavePath"></div>
+        </div>
+
+        <div class="panel">
+          <h2>历史 <small id="imgHistHint">本地保存，关掉页面还在</small></h2>
+          <div class="hist" id="imgHist"><div class="empty">还没有记录</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="ghost" id="imgHistClear" type="button">清空历史</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+let models = [];
+let cur = { model: 'seedance-2.5', resolution: '720p', duration: 5, ratio: 'adaptive', taskType: 'auto' };
+let frames = { first: null, last: null };
+let refImages = [];   // data URL 数组
+let refVideos = [];   // {value, label}
+let refAudios = [];
+let timer = null, startedAt = 0;
+
+function log(msg, cls = '') {
+  const el = document.createElement('div');
+  const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  el.innerHTML = `<span class="t">${t}</span>${cls ? `<span class="${cls}">${escapeHtml(msg)}</span>` : escapeHtml(msg)}`;
+  $('log').appendChild(el);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function chipGroup(container, values, active, onPick, suffixFn) {
+  container.innerHTML = '';
+  values.forEach((v) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(v === active));
+    b.innerHTML = escapeHtml(String(v)) + (suffixFn ? `<small>${suffixFn(v)}</small>` : '');
+    b.onclick = () => { onPick(v); };
+    container.appendChild(b);
+  });
+}
+
+function modelOf(key) { return models.find((m) => m.key === key); }
+
+function renderChips() {
+  const m = modelOf(cur.model) || models[0];
+  if (!m) return;
+  const res = m.resolutions || ['480p', '720p', '1080p'];
+  if (!res.includes(cur.resolution)) cur.resolution = res[0];
+  chipGroup($('resChips'), res, cur.resolution, (v) => { cur.resolution = v; renderChips(); }, (v) => {
+    const p = m.pricePerSecond && m.pricePerSecond[v];
+    return p ? `¥${p}/s` : '';
+  });
+
+  const durMin = m.duration ? m.duration.min : 4;
+  const durMax = m.duration ? m.duration.max : 30;
+  const presets = [4, 5, 8, 10, 15].filter((d) => d >= durMin && d <= durMax);
+  // 换模型后可能越界，先夹回合法区间
+  if (cur.duration !== -1 && (cur.duration < durMin || cur.duration > durMax)) {
+    cur.duration = presets.includes(5) ? 5 : presets[0];
+  }
+  const isCustom = cur.duration !== -1 && !presets.includes(cur.duration);
+  const durValues = isCustom ? [...presets, cur.duration, -1] : [...presets, -1];
+  chipGroup($('durChips'), durValues, cur.duration, (v) => { cur.duration = v; renderChips(); }, (v) => (v === -1 ? '自动' : 's'));
+  $('durHint').textContent = `模型 ${durMin}–${durMax}s；-1 为自动`;
+  addCustomDurationChip(durMin, durMax, isCustom);
+  renderCapabilities(m);
+
+  const ratios = m.ratios || ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive'];
+  if (!ratios.includes(cur.ratio)) cur.ratio = 'adaptive';
+  chipGroup($('ratioChips'), ratios, cur.ratio, (v) => { cur.ratio = v; renderChips(); });
+
+  if (frames.first && cur.ratio !== 'adaptive') { cur.ratio = 'adaptive'; renderChips(); }
+  $('resHint').textContent = m.pricePerSecond ? `${m.label} · ${m.resolutions.join('/')}` : '该模型未内置单价';
+  renderTaskType();
+  updateCost();
+}
+
+function addCustomDurationChip(min, max, isActive) {
+  const box = $('durChips');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'chip custom' + (isActive ? ' active' : '');
+  btn.textContent = isActive ? '✎ 自定义' : '+ 自定义';
+  btn.onclick = () => openDurationInput(box, btn, min, max);
+  box.appendChild(btn);
+}
+
+function openDurationInput(box, btn, min, max) {
+  if (cur.taskType === 'edit') {
+    log('视频编辑任务只能 duration=-1（跟随原片时长），不能自定义', 'err');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'chip-input';
+  input.min = String(min);
+  input.max = String(max);
+  input.placeholder = `${min}-${max}`;
+  if (cur.duration !== -1) input.value = String(cur.duration);
+  box.replaceChild(input, btn);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const restore = () => {
+    if (done) return;
+    done = true;
+    renderChips();
+  };
+  const commit = () => {
+    if (done) return;
+    const raw = input.value.trim();
+    const n = Math.round(Number(raw));
+    if (!raw || Number.isNaN(n)) return restore();
+    if (n < min || n > max) {
+      log(`时长要在 ${min}–${max} 秒之间，收到 ${raw}`, 'err');
+      done = true;
+      renderChips();
+      return;
+    }
+    done = true;
+    cur.duration = n;
+    renderChips();
+    log(`时长已设为 ${n}s`);
+  };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      restore();
+    }
+  };
+  input.onblur = commit;
+}
+
+function renderTaskType() {
+  const types = [['auto', '自动判定'], ['reference', '参考生视频'], ['edit', '视频编辑'], ['extend', '视频延长']];
+  const box = $('taskTypeChips');
+  box.innerHTML = '';
+  types.forEach(([val, label]) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(cur.taskType === val));
+    b.textContent = label;
+    b.onclick = () => {
+      const changed = cur.taskType !== val;
+      cur.taskType = val;
+      if (val === 'edit') {
+        cur.ratio = 'adaptive';
+        cur.duration = -1;
+        log('视频编辑：画幅锁定 adaptive、时长锁定 -1（跟随原片）', 'hl');
+      }
+      renderChips();
+      if (changed) reprobeAllVideos();
+    };
+    box.appendChild(b);
+  });
+}
+
+function currentChipsPressed(id, val) {
+  [...$(id).children].forEach((c) => c.setAttribute('aria-pressed', String(c.textContent.startsWith(String(val)))));
+}
+
+function updateCost() {
+  const m = modelOf(cur.model);
+  const secs = cur.duration === -1 ? null : Number(cur.duration);
+  if (!m || !m.pricePerSecond || !secs) {
+    $('cost').textContent = '—';
+    $('costLine').textContent = cur.duration === -1 ? '时长为自动，无法预估' : '该模型未内置单价';
+    $('spark').style.width = '0%';
+    return;
+  }
+  const per = m.pricePerSecond[cur.resolution];
+  if (!per) { $('cost').textContent = '—'; $('costLine').textContent = '该分辨率无单价'; return; }
+  const total = Math.round(per * secs * 100) / 100;
+  $('cost').textContent = '¥ ' + total.toFixed(2);
+  $('costLine').textContent = `${cur.resolution} · ${secs}s · ¥${per}/s`;
+  const topRate = Math.max(...Object.values(m.pricePerSecond));
+  const max = topRate * (m.duration ? m.duration.max : 30);
+  $('spark').style.width = Math.min(100, (total / max) * 100) + '%';
+}
+
+function setStage(text, cls = '') {
+  $('stage').innerHTML = `<span class="statusdot ${cls}"></span> ${escapeHtml(text)}`;
+}
+
+function setKeyState(hasKey, hint) {
+  const p = $('keyPill');
+  p.className = 'pill ' + (hasKey ? 'ok' : 'bad');
+  p.innerHTML = `<i></i>${hasKey ? (hint || '已配置') : '未配置'}`;
+  $('banner').classList.toggle('on', !hasKey);
+}
+
+async function loadState() {
+  const r = await fetch('/api/state');
+  const s = await r.json();
+  models = s.models;
+  setKeyState(s.hasKey, s.keyHint);
+  // 页面自证：端口 + 进程号。端口被占自动换号时，这里能立刻看出来
+  if ($('instInfo')) {
+    const at = s.startedAt ? new Date(s.startedAt) : null;
+    const hm = at ? `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}` : '—';
+    $('instInfo').textContent = `${location.host} · pid ${s.pid || '?'} · ${hm} 启动`;
+    $('instInfo').title = `生图模型 ${(s.imageModels || []).length} 个 / 视频模型 ${(s.models || []).length} 个`;
+  }
+  const sel = $('model');
+  sel.innerHTML = models.map((m) => `<option value="${m.key}">${m.label} · ${m.id}</option>`).join('');
+  sel.value = s.defaultModel;
+  cur.model = s.defaultModel;
+  cur.resolution = '480p';
+  renderChips();
+  renderFilter();
+  applyImageState(s);
+  log(`就绪 · ${models.length} 个模型 · base ${s.baseUrl}`, 'ok');
+  log('参数确认无误后点「生成视频」，会先扣费再生成', 'hl');
+}
+
+$('model').onchange = (e) => { cur.model = e.target.value; renderChips(); };
+$('prompt').oninput = (e) => { $('charCount').textContent = e.target.value.trim().length + ' 字'; };
+
+/* ---------- 账户体检 ---------- */
+$('acctRefresh').onclick = loadAccount;
+$('akToggle').onclick = () => {
+  const f = $('akForm');
+  const show = f.style.display === 'none' || !f.style.display;
+  f.style.display = show ? 'block' : 'none';
+  if (show) {
+    setTimeout(() => {
+      f.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      $('akInput').focus();
+    }, 60);
+  }
+};
+$('akSave').onclick = saveAk;
+$('akInput').onkeydown = (e) => { if (e.key === 'Enter') $('skInput').focus(); };
+$('skInput').onkeydown = (e) => { if (e.key === 'Enter') saveAk(); };
+
+async function saveAk() {
+  const accessKey = $('akInput').value.trim();
+  const secretKey = $('skInput').value.trim();
+  if (!accessKey || !secretKey) { log('Access Key 与 Secret Key 都要填', 'err'); return; }
+  $('akSave').disabled = true;
+  try {
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessKey, secretKey }),
+    });
+    const s = await r.json();
+    if (!s.ok) { log('保存失败：' + (s.error || '未知错误'), 'err'); return; }
+    $('akInput').value = '';
+    $('skInput').value = '';
+    $('akForm').style.display = 'none';
+    log('Access Key 已保存，正在查询账户…', 'ok');
+    await loadAccount();
+  } finally {
+    $('akSave').disabled = false;
+  }
+}
+
+async function loadAccount(silent) {
+  const hint = $('acctHint');
+  if (!silent) hint.textContent = '查询中…';
+  try {
+    const r = await fetch('/api/account').then((x) => x.json());
+    if (!r.ok) {
+      $('acctBal').textContent = '¥ —';
+      if (r.needsAk) {
+        $('acctGate').textContent = '需配 AK';
+        $('acctActive').textContent = '需配 AK';
+        $('akBlock').style.display = '';
+        $('akToggle').textContent = '配置 Access Key 才能查余额';
+        hint.innerHTML = 'Access Key 未配置（云账号密钥，不是方舟 API Key）';
+        if (!silent) log('查余额需要 Access Key：点上方「配置 Access Key」或 ark config set access-key <AK>', 'err');
+      } else {
+        // AK 已配置但查询失败（鉴权错、权限不足、网络等），不能显示成「未配置」
+        $('acctGate').textContent = '查询失败';
+        $('acctActive').textContent = '查询失败';
+        $('akBlock').style.display = '';
+        $('akToggle').textContent = '更换 Access Key';
+        const first = String(r.error || '查询失败').split('\n')[0];
+        hint.textContent = first.length > 90 ? first.slice(0, 90) + '…' : first;
+        hint.title = String(r.error || '');
+        if (!silent) log('账户查询失败：' + first, 'err');
+      }
+      return;
+    }
+    const b = r.balance || {};
+    $('acctBal').textContent = '¥ ' + Number(r.available || 0).toFixed(2);
+    const gap = Number(r.available || 0) - (r.threshold || 200);
+    $('acctGate').innerHTML = r.met
+      ? `<span style="color:var(--ok)">✅ 达标 · 余量 ¥${gap.toFixed(2)}</span>`
+      : `<span style="color:var(--err)">❌ 差 ¥${Math.abs(gap).toFixed(2)}</span>`;
+    const active = (r.models || []).filter((m) => m.state === 'Available').length;
+    const total = (r.models || []).length;
+    $('acctActive').textContent = `${active} / ${total} 已开通`;
+    const per = 0.672;
+    const secs = Math.floor(Number(r.available || 0) / per);
+    hint.textContent = `≈ ${secs} 秒 480p 成片 · 锁定 ¥${Number(r.locked || 0).toFixed(2)}`;
+    $('akBlock').style.display = '';
+    $('akToggle').textContent = '更换 Access Key';
+    $('akForm').style.display = 'none';
+    if (!silent) {
+      (r.warnings || []).slice(0, 2).forEach((w) => log(w, 'err'));
+      log(`账户已刷新：可用 ¥${Number(r.available || 0).toFixed(2)}`, 'ok');
+    }
+  } catch (e) {
+    hint.textContent = '查询失败：' + e.message;
+  }
+}
+
+$('keySave').onclick = saveKey;
+$('keyInput').onkeydown = (e) => { if (e.key === 'Enter') saveKey(); };
+async function saveKey() {
+  const v = $('keyInput').value.trim();
+  if (!v) return;
+  const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: v }) });
+  const s = await r.json();
+  if (s.ok) { setKeyState(true, s.keyHint); $('keyInput').value = ''; log('API Key 已保存到 ~/.ark/config.json', 'ok'); }
+  else log('保存失败：' + (s.error || '未知错误'), 'err');
+}
+
+function wireDrop(dropId, inputId, slot) {
+  const drop = $(dropId), input = $(inputId);
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault(); drop.classList.remove('over');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) readImage(f, slot);
+  });
+  input.addEventListener('change', (e) => { const f = e.target.files[0]; if (f) readImage(f, slot); });
+}
+function readImage(file, slot) {
+  if (!file.type.startsWith('image/')) { log('只支持图片文件', 'err'); return; }
+  if (file.size > 30 * 1024 * 1024) { log('图片超过 30MB 上限', 'err'); return; }
+  const fr = new FileReader();
+  fr.onload = () => {
+    frames[slot] = fr.result;
+    const drop = slot === 'first' ? $('dropFirst') : $('dropLast');
+    drop.querySelectorAll('img,.clear').forEach((n) => n.remove());
+    const img = document.createElement('img'); img.src = fr.result; drop.appendChild(img);
+    const btn = document.createElement('button'); btn.className = 'clear'; btn.textContent = '×'; btn.type = 'button';
+    btn.onclick = (e) => { e.preventDefault(); frames[slot] = null; img.remove(); btn.remove(); renderChips(); };
+    drop.appendChild(btn);
+    log(`已载入${slot === 'first' ? '首帧' : '尾帧'}：${file.name}（${(file.size / 1024).toFixed(0)}KB）`);
+    if (frames.first && cur.ratio !== 'adaptive') { cur.ratio = 'adaptive'; renderChips(); log('首帧任务已强制画幅为 adaptive', 'hl'); }
+  };
+  fr.readAsDataURL(file);
+}
+wireDrop('dropFirst', 'fileFirst', 'first');
+wireDrop('dropLast', 'fileLast', 'last');
+
+/* ---------- 内置预设：把官方的白模 / 绿幕用法固化成「提示词 + 参数」一整套 ---------- */
+/* 说明：Seedance 2.5 的 API 没有 green_screen / clay_render 这类参数，
+   白模与绿幕都只是「普通参考视频 + 特定写法的提示词」，靠语义识别。
+   所以预设的价值不在于调接口，而在于把参数搭配、提示词写法和素材要求固定下来。 */
+const TASK_LABEL = { auto: '自动判定', reference: '参考生视频', edit: '视频编辑', extend: '视频延长' };
+
+/* 预设数据由后端 src/presets.js 提供，网页和 CLI 共用同一份，避免两处各写一遍提示词 */
+let BUILTIN_TPLS = [];
+
+async function loadPresets() {
+  try {
+    const res = await fetch('/api/presets');
+    const j = await res.json();
+    if (Array.isArray(j.presets) && j.presets.length) {
+      BUILTIN_TPLS = j.presets;
+      renderTemplates();
+    }
+  } catch (e) {
+    log('内置预设加载失败：' + e.message + '（自定义模板不受影响）', 'hl');
+  }
+}
+
+/** 把预设里的参数应用到当前配置，返回改了哪些项（给日志用） */
+function applyPreset(p) {
+  const done = [];
+  let needReprobe = false;
+  if (p.taskType && cur.taskType !== p.taskType) {
+    cur.taskType = p.taskType;
+    done.push(`任务类型→${TASK_LABEL[p.taskType] || p.taskType}`);
+    needReprobe = true;
+  }
+  if (p.ratio && cur.ratio !== p.ratio) { cur.ratio = p.ratio; done.push(`画幅→${p.ratio}`); }
+  if (p.duration !== undefined && cur.duration !== p.duration) {
+    cur.duration = p.duration;
+    done.push(`时长→${p.duration === -1 ? '跟随原片' : `${p.duration}s`}`);
+  }
+  if (p.genAudio !== undefined) {
+    const el = $('genAudio');
+    if (el && el.checked !== p.genAudio) { el.checked = p.genAudio; done.push(p.genAudio ? '开原生音频' : '关原生音频'); }
+  }
+  if (p.outputFormat) {
+    const el = $('advFormat');
+    if (el && el.value !== p.outputFormat) {
+      el.value = p.outputFormat;
+      done.push(`输出格式→${p.outputFormat}`);
+      const adv = el.closest('details');
+      if (adv) adv.open = true;
+    }
+  }
+  renderChips();
+  updateCost();
+  if (needReprobe) reprobeAllVideos();
+  return done;
+}
+
+/* ---------- 提示词模板：只存用户自己的，浏览器本地保存 ---------- */
+const TPL_KEY = 'ark.templates.v1';
+function loadTemplates() {
+  try {
+    const v = JSON.parse(localStorage.getItem(TPL_KEY) || '[]');
+    return Array.isArray(v) ? v.filter((t) => t && t.name && typeof t.text === 'string') : [];
+  } catch { return []; }
+}
+function saveTemplates(list) {
+  try { localStorage.setItem(TPL_KEY, JSON.stringify(list)); }
+  catch (e) { log('模板保存失败：' + e.message, 'err'); }
+}
+function renderTemplates(selected) {
+  const list = loadTemplates();
+  const sel = $('tpl');
+  const builtin = BUILTIN_TPLS
+    .map((t, i) => `<option value="b:${i}">${escapeHtml(t.name)}</option>`)
+    .join('');
+  const mine = list.map((t, i) => `<option value="u:${i}">${escapeHtml(t.name)}</option>`).join('');
+  sel.innerHTML = '<option value="">提示词模板 / 内置预设…</option>' +
+    `<optgroup label="内置预设">${builtin}</optgroup>` +
+    (list.length ? `<optgroup label="我的模板">${mine}</optgroup>` : '');
+  sel.value = selected === undefined || selected === null ? '' : String(selected);
+  const onBuiltin = sel.value.startsWith('b:');
+  $('tplDel').disabled = onBuiltin || list.length === 0;
+  const nb = BUILTIN_TPLS.length;
+  $('tplHint').textContent = nb
+    ? `${nb} 个内置预设${list.length ? ` · ${list.length} 个自定义模板` : ' · 暂无自定义模板'}`
+    : (list.length ? `${list.length} 个自定义模板` : '暂无模板 · 写好提示词后点「+ 存为模板」');
+}
+$('tpl').onchange = (e) => {
+  const val = e.target.value;
+  if (val === '') return;
+
+  if (val.startsWith('b:')) {
+    const t = BUILTIN_TPLS[Number(val.slice(2))];
+    if (!t) return;
+    $('prompt').value = t.text;
+    $('prompt').dispatchEvent(new Event('input'));
+    const done = applyPreset(t.preset);
+    log(`已套用预设「${t.name}」${done.length ? ' · ' + done.join(' · ') : ''}`, 'ok');
+    if (t.hint) log(`提示：${t.hint}`, 'hl');
+    return;
+  }
+
+  const t = loadTemplates()[Number(val.slice(2))];
+  if (!t) return;
+  $('prompt').value = t.text;
+  $('prompt').dispatchEvent(new Event('input'));
+  log(`已套用模板：${t.name}`, 'ok');
+};
+$('tplSave').onclick = () => {
+  const text = $('prompt').value.trim();
+  if (!text) { log('先写好提示词，再存为模板', 'err'); return; }
+  const val = $('tpl').value;
+  const existing = val.startsWith('u:') ? loadTemplates()[Number(val.slice(2))] : null;
+  if (val.startsWith('b:')) log('内置预设不能覆盖，保存会新建一个你自己的模板', 'hl');
+  $('tplNameRow').style.display = 'flex';
+  $('tplName').value = existing ? existing.name : text.slice(0, 12).replace(/\s+/g, ' ');
+  $('tplName').focus();
+  $('tplName').select();
+};
+function closeTplName() { $('tplNameRow').style.display = 'none'; }
+function commitTplName() {
+  const name = $('tplName').value.trim();
+  if (!name) { $('tplName').focus(); return; }
+  const text = $('prompt').value.trim();
+  if (!text) { log('提示词为空，未保存模板', 'err'); closeTplName(); return; }
+  const list = loadTemplates();
+  const dup = list.findIndex((t) => t.name === name);
+  if (dup >= 0) list[dup].text = text; else list.push({ name, text });
+  saveTemplates(list);
+  renderTemplates(`u:${dup >= 0 ? dup : list.length - 1}`);
+  closeTplName();
+  log(dup >= 0 ? `模板「${name}」已更新` : `已存为模板「${name}」`, 'ok');
+}
+$('tplNameOk').onclick = commitTplName;
+$('tplNameCancel').onclick = closeTplName;
+$('tplName').onkeydown = (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); commitTplName(); }
+  if (e.key === 'Escape') closeTplName();
+};
+$('tplDel').onclick = () => {
+  const val = $('tpl').value;
+  if (val === '') { log('先在下拉里选中要删除的模板', 'err'); return; }
+  if (val.startsWith('b:')) {
+    log('内置预设不能删除；想改成自己的版本，用「+ 存为模板」另存一份', 'err');
+    return;
+  }
+  const list = loadTemplates();
+  const [removed] = list.splice(Number(val.slice(2)), 1);
+  if (!removed) return;
+  saveTemplates(list);
+  renderTemplates();
+  log(`已删除模板「${removed.name}」`);
+};
+renderTemplates();
+
+/* ---------- 模型能力速查 ---------- */
+function renderCapabilities(m) {
+  const box = $('capCard');
+  if (!m) return;
+  const rows = [
+    ['Model ID', m.id],
+    ['分辨率', (m.resolutions || []).join(' / ') || '—'],
+    ['时长', m.duration ? `${m.duration.min}–${m.duration.max}s 或自动` : '—'],
+    ['画幅', (m.ratios || []).length + ' 种 + adaptive'],
+    ['原生音频', m.audio ? '支持（11 语言）' : '不支持'],
+    ['样片模式', m.draft ? '支持（480p）' : '不支持'],
+  ];
+  box.innerHTML = rows
+    .map(([k, v], i) => `<div class="row"><span class="k">${k}</span><span class="v" style="font-size:${i === 0 ? '10.5' : '11.5'}px;text-align:right;word-break:break-all;max-width:150px">${escapeHtml(String(v))}</span></div>`)
+    .join('') +
+    '<div class="k" style="font-size:10.5px;line-height:1.6;margin-top:9px;color:var(--dim)">素材上限：图 30 张 / 视频 10 个 / 音频 10 段；请求体 ≤64MB；不支持真人人脸参考</div>';
+}
+
+
+function renderRefImages() {
+  const box = $('refThumbs');
+  $('refImgCount').textContent = `${refImages.length} / 30`;
+  box.innerHTML = '';
+  if (!refImages.length) {
+    box.innerHTML = '<span class="k" style="font-size:11.5px">还没有参考图</span>';
+    return;
+  }
+  refImages.forEach((src, i) => {
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = src;
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = 'r' + (i + 1);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.onclick = () => { refImages.splice(i, 1); renderRefImages(); };
+    d.append(img, tag, btn);
+    box.appendChild(d);
+  });
+}
+
+function addRefImages(files) {
+  const list = [...files];
+  for (const f of list) {
+    if (refImages.length >= 30) { log('参考图最多 30 张', 'err'); break; }
+    if (!f.type.startsWith('image/')) { log(`跳过非图片：${f.name}`, 'err'); continue; }
+    if (f.size > 30 * 1024 * 1024) { log(`跳过超 30MB：${f.name}`, 'err'); continue; }
+    const fr = new FileReader();
+    fr.onload = () => {
+      refImages.push(fr.result);
+      renderRefImages();
+      log(`参考图 +1：${f.name}（${(f.size / 1024).toFixed(0)}KB）`);
+    };
+    fr.readAsDataURL(f);
+  }
+}
+
+function renderRefList(kind) {
+  const arr = kind === 'video' ? refVideos : refAudios;
+  const box = kind === 'video' ? $('refVideoList') : $('refAudioList');
+  $(kind === 'video' ? 'refVideoCount' : 'refAudioCount').textContent = `${arr.length} / 10`;
+  box.innerHTML = '';
+  arr.forEach((it, i) => {
+    const isUrl = String(it.value).startsWith('http');
+    const row = document.createElement('div');
+    row.className = 'refitem';
+
+    const u = document.createElement('span');
+    u.className = 'u clickable' + (isUrl ? ' url' : '');
+    u.textContent = it.label;
+    u.title = isUrl ? it.label : `${it.label} · 点一下预览`;
+    u.onclick = () => { it._open = !it._open; renderRefList(kind); };
+
+    const t = document.createElement('span');
+    t.className = 'sz';
+    const mb = it.size ? ` · ${humanSize(it.size)}` : '';
+    t.textContent = (isUrl ? 'URL' : '本地') + mb;
+
+    /* 视频预检徽标：时长 / 分辨率 / 帧率，不合规标红 */
+    let badge = null;
+    if (kind === 'video') {
+      badge = document.createElement('span');
+      const p = it.probe;
+      if (it.probing) {
+        badge.className = 'pbadge';
+        badge.textContent = '预检中…';
+      } else if (p && p.ok) {
+        badge.className = 'pbadge ' + (p.pass ? 'ok' : 'bad');
+        badge.textContent = `${p.duration}s · ${p.width}×${p.height} · ${p.fps}fps${p.pass ? ' ✓' : ' ⚠'}`;
+        badge.title = p.pass ? '符合官方限制' : p.warnings.join('\n');
+      } else if (p && p.skipped) {
+        badge.className = 'pbadge';
+        badge.textContent = '未预检';
+        badge.title = p.reason || '';
+      } else if (p && !p.ok) {
+        badge.className = 'pbadge bad';
+        badge.textContent = '预检失败';
+        badge.title = p.error || '';
+      } else {
+        badge.className = 'pbadge';
+        badge.textContent = '未预检';
+      }
+    }
+
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = '×';
+    b.title = '移除';
+    b.onclick = () => {
+      if (it.blob) URL.revokeObjectURL(it.blob);
+      arr.splice(i, 1);
+      renderRefList(kind);
+    };
+
+    row.append(...[u, t, badge, b].filter(Boolean));
+    box.appendChild(row);
+
+    if (it._open) {
+      const wrap = document.createElement('div');
+      wrap.className = 'refprev';
+      const src = it.blob || it.value;
+      if (kind === 'video') {
+        const v = document.createElement('video');
+        v.src = src;
+        v.controls = true;
+        v.preload = 'metadata';
+        wrap.appendChild(v);
+      } else {
+        const a = document.createElement('audio');
+        a.src = src;
+        a.controls = true;
+        wrap.appendChild(a);
+      }
+      row.after(wrap);
+    }
+  });
+}
+
+/* 参考视频 / 音频支持拖拽文件进来 */
+function wireRefDrop(kind) {
+  const block = $(kind === 'video' ? 'blockRefVideo' : 'blockRefAudio');
+  if (!block) return;
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
+  block.addEventListener('dragover', (e) => { stop(e); block.classList.add('dragover'); });
+  block.addEventListener('dragleave', (e) => { stop(e); block.classList.remove('dragover'); });
+  block.addEventListener('drop', (e) => {
+    stop(e);
+    block.classList.remove('dragover');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) addRefFile(kind, f);
+  });
+}
+wireRefDrop('video');
+wireRefDrop('audio');
+
+
+/* ---------- 参考视频预检：本机 ffprobe 读参数，按官方限制提前判断 ---------- */
+async function probeRefItem(item, kind) {
+  if (kind !== 'video' || !item) return;
+  item.probing = true;
+  item.probe = null;
+  renderRefList(kind);
+  try {
+    const res = await fetch('/api/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ src: item.value, taskType: cur.taskType }),
+    });
+    const data = await res.json();
+    item.probe = data;
+    if (data.skipped) {
+      log(`预检跳过：${data.reason}`, 'hl');
+    } else if (!data.ok) {
+      log(`预检失败：${data.error}`, 'err');
+    } else if (data.pass) {
+      log(`预检通过：${data.width}×${data.height} · ${data.duration}s · ${data.fps}fps`, 'ok');
+    } else {
+      log(`预检不通过：${data.warnings.join('；')}`, 'err');
+    }
+  } catch (e) {
+    item.probe = { ok: false, error: e.message };
+    log(`预检出错：${e.message}`, 'err');
+  } finally {
+    item.probing = false;
+    renderRefList(kind);
+  }
+}
+
+/** 任务类型变了（比如切到编辑任务，时长下限从 2s 抬到 4s），已加的素材要重判 */
+function reprobeAllVideos() {
+  if (!refVideos.length) return;
+  log('任务类型变化，重新预检参考视频…', 'hl');
+  (async () => {
+    for (const it of refVideos) await probeRefItem(it, 'video');
+  })();
+}
+
+function addRefUrl(kind) {
+  const input = kind === 'video' ? $('refVideoUrl') : $('refAudioUrl');
+  const arr = kind === 'video' ? refVideos : refAudios;
+  const v = input.value.trim();
+  if (!v) return;
+  if (!/^https?:\/\//i.test(v)) { log('要填 http(s) 开头的公网地址', 'err'); return; }
+  if (arr.length >= 10) { log(`${kind === 'video' ? '参考视频' : '参考音频'}最多 10 个`, 'err'); return; }
+  const item = { value: v, label: v };
+  arr.push(item);
+  input.value = '';
+  renderRefList(kind);
+  log(`参考${kind === 'video' ? '视频' : '音频'} URL +1`);
+  if (kind === 'video') probeRefItem(item, 'video');
+}
+
+const LOCAL_LIMIT_MB = 10;
+function humanSize(n) {
+  if (!n) return '0KB';
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+}
+function addRefFile(kind, file) {
+  if (!file) return;
+  const arr = kind === 'video' ? refVideos : refAudios;
+  if (arr.length >= 10) { log('最多 10 个', 'err'); return; }
+  if (file.size > LOCAL_LIMIT_MB * 1024 * 1024) {
+    log(`本地文件 ${(file.size / 1048576).toFixed(1)}MB 超过 ${LOCAL_LIMIT_MB}MB，base64 会撑爆 64MB 请求上限，请先传到对象存储用 URL`, 'err');
+    return;
+  }
+  const fr = new FileReader();
+  fr.onload = () => {
+    const item = {
+      value: fr.result,
+      label: `${file.name}（本地）`,
+      name: file.name,
+      size: file.size,
+      blob: URL.createObjectURL(file),
+      _open: false,
+    };
+    arr.push(item);
+    renderRefList(kind);
+    log(`参考${kind === 'video' ? '视频' : '音频'} +1：${file.name} · ${humanSize(file.size)}`);
+    if (kind === 'video') probeRefItem(item, 'video');
+  };
+  fr.readAsDataURL(file);
+}
+
+$('addRefImg').onclick = () => $('fileRefImg').click();
+$('fileRefImg').onchange = (e) => { addRefImages(e.target.files); e.target.value = ''; };
+$('addRefVideo').onclick = () => addRefUrl('video');
+$('refVideoUrl').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addRefUrl('video'); } };
+$('pickRefVideo').onclick = () => $('fileRefVideo').click();
+$('fileRefVideo').onchange = (e) => { addRefFile('video', e.target.files[0]); e.target.value = ''; };
+$('addRefAudio').onclick = () => addRefUrl('audio');
+$('refAudioUrl').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addRefUrl('audio'); } };
+$('pickRefAudio').onclick = () => $('fileRefAudio').click();
+$('fileRefAudio').onchange = (e) => { addRefFile('audio', e.target.files[0]); e.target.value = ''; };
+
+const refThumbs = $('refThumbs');
+refThumbs.addEventListener('dragover', (e) => e.preventDefault());
+refThumbs.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length) addRefImages(e.dataTransfer.files); });
+
+$('run').onclick = async () => {
+  const prompt = $('prompt').value.trim();
+  if (!prompt && !frames.first && !refImages.length && !refVideos.length && !refAudios.length) {
+    log('至少要填提示词，或给一张首帧/参考图，或一段参考视频/音频', 'err');
+    return;
+  }
+  if (cur.taskType === 'edit' && !refVideos.length) {
+    log('任务类型选了「视频编辑」，必须先加一个参考视频', 'err');
+    return;
+  }
+  $('run').disabled = true;
+  $('log').innerHTML = '';
+  setStage('提交中', 'run');
+  startedAt = Date.now();
+  $('taskId').textContent = '—';
+  document.getElementById('emptyPanel').style.display = 'none';
+
+  const body = {
+    prompt: prompt || '',
+    model: cur.model,
+    resolution: cur.resolution,
+    ratio: frames.first ? 'adaptive' : cur.ratio,
+    duration: Number(cur.duration),
+    generateAudio: $('genAudio').checked,
+    watermark: $('watermark').checked,
+    draft: $('draft').checked,
+    taskType: cur.taskType,
+    firstFrame: frames.first,
+    lastFrame: frames.last,
+    refImages: refImages.slice(),
+    refVideos: refVideos.map((x) => x.value),
+    refAudios: refAudios.map((x) => x.value),
+    cameraFixed: $('advCamera').checked,
+    returnLastFrame: $('advLastFrame').checked,
+    outputFormat: $('advFormat').value || undefined,
+    callbackUrl: $('advCallback').value.trim() || undefined,
+    safetyIdentifier: $('advSafety').value.trim() || undefined,
+    seed: $('advSeed').value.trim() || undefined,
+    priority: $('advPriority').value.trim() || undefined,
+    executionExpiresAfter: $('advExpires').value.trim() ? Number($('advExpires').value.trim()) * 3600 : undefined,
+  };
+  log(`提交 ${modelOf(cur.model).id} · ${body.resolution} · ${body.duration === -1 ? '自动时长' : body.duration + 's'} · ${body.ratio}` +
+    ` · 素材 首帧${frames.first ? 1 : 0}/参考图${refImages.length}/视频${refVideos.length}/音频${refAudios.length}`);
+
+  let res;
+  try {
+    res = await (await fetch('/api/video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+  } catch (e) {
+    log('网络错误：' + e.message, 'err'); setStage('失败', 'err'); $('run').disabled = false; return;
+  }
+  if (!res.ok) { log(res.error || '提交失败', 'err'); setStage('失败', 'err'); $('run').disabled = false; return; }
+
+  $('taskId').textContent = res.id;
+  log('任务已创建：' + res.id, 'ok');
+  if (res.estimate) log('预估 ' + res.estimate, 'hl');
+  poll(res.id);
+  timer = setInterval(() => {
+    $('elapsed').textContent = Math.round((Date.now() - startedAt) / 1000) + 's';
+  }, 500);
+};
+
+$('cancel').onclick = () => {
+  clearInterval(timer);
+  $('run').disabled = false;
+  $('prompt').value = '';
+  $('prompt').dispatchEvent(new Event('input'));
+  $('log').innerHTML = '';
+  setStage('空闲');
+  $('taskId').textContent = '—';
+  $('elapsed').textContent = '0s';
+  $('result').classList.remove('on');
+  document.getElementById('emptyPanel').style.display = '';
+  refImages = []; refVideos = []; refAudios = [];
+  renderRefImages(); renderRefList('video'); renderRefList('audio');
+};
+
+async function poll(id) {
+  let lastStatus = '';
+  const tick = async () => {
+    let t;
+    try { t = await (await fetch('/api/task/' + encodeURIComponent(id))).json(); }
+    catch { return; }
+    if (t.status && t.status !== lastStatus) {
+      lastStatus = t.status;
+      const map = { queued: '排队中', running: '生成中', succeeded: '已完成', failed: '失败', cancelled: '已取消', expired: '已过期' };
+      setStage(map[t.status] || t.status, t.status === 'succeeded' ? 'ok' : t.status === 'failed' ? 'err' : 'run');
+      log('状态 → ' + (map[t.status] || t.status));
+    }
+    if (['succeeded', 'failed', 'cancelled', 'expired'].includes(t.status)) {
+      clearInterval(timer);
+      $('run').disabled = false;
+      if (t.status === 'succeeded') {
+        const secs = Math.round((Date.now() - startedAt) / 1000);
+        $('elapsed').textContent = secs + 's';
+        log(`完成，耗时 ${secs}s`, 'ok');
+        if (t.file) {
+          $('result').classList.add('on');
+          $('player').src = '/api/file/' + encodeURIComponent(t.file);
+          $('fileName').textContent = t.file;
+          $('mRes').textContent = t.resolution || cur.resolution;
+          $('mRatio').textContent = t.ratio || cur.ratio;
+          $('mDur').textContent = (t.duration || cur.duration) + 's';
+          $('mTok').textContent = t.tokens ? t.tokens.toLocaleString() : '—';
+          $('savePath').textContent = t.path || '';
+          $('download').href = '/api/file/' + encodeURIComponent(t.file);
+          $('download').download = t.file;
+          log('已落盘：' + t.path, 'ok');
+        }
+        lastTaskId = id;
+        $('draftAction').style.display = t.draft ? 'block' : 'none';
+        if (t.lastFrameFile) {
+          $('lastFrameBox').style.display = 'block';
+          $('lastFrameImg').src = '/api/file/' + encodeURIComponent(t.lastFrameFile);
+        } else {
+          $('lastFrameBox').style.display = 'none';
+        }
+        if (t.draft) log('这是 480p 样片，满意就点上方「用这个样片出正式片」', 'hl');
+        loadTasks();
+      } else {
+        log('失败：' + (t.error || t.status), 'err');
+      }
+      return;
+    }
+    setTimeout(tick, 2500);
+  };
+  tick();
+}
+
+let lastTaskId = null;
+
+/* ---------- 任务记录 ---------- */
+const STATUS_MAP = { queued: '排队', running: '生成中', succeeded: '成功', failed: '失败', cancelled: '已取消', expired: '超时' };
+const FILTERS = [['', '全部'], ['succeeded', '成功'], ['running', '生成中'], ['failed', '失败'], ['cancelled', '已取消']];
+let taskFilter = '';
+
+function renderFilter() {
+  const box = $('filterChips');
+  box.innerHTML = '';
+  FILTERS.forEach(([val, label]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.setAttribute('aria-pressed', String(taskFilter === val));
+    b.textContent = label;
+    b.onclick = () => { taskFilter = val; renderFilter(); loadTasks(); };
+    box.appendChild(b);
+  });
+}
+
+async function loadTasks() {
+  const box = $('taskList');
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  let d;
+  try {
+    const r = await fetch('/api/tasks' + (taskFilter ? '?status=' + taskFilter : ''));
+    d = await r.json();
+  } catch (e) {
+    box.innerHTML = `<div class="empty">请求失败：${escapeHtml(e.message)}</div>`;
+    return;
+  }
+  if (!d.ok) {
+    box.innerHTML = `<div class="empty">${escapeHtml(String(d.error || '加载失败').split('\n')[0])}</div>`;
+    return;
+  }
+  if (!d.items.length) {
+    box.innerHTML = '<div class="empty">还没有任务记录</div>';
+    return;
+  }
+  box.innerHTML = '';
+  for (const it of d.items) {
+    const row = document.createElement('div');
+    row.className = 'taskrow';
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="id">${escapeHtml(it.id)}</div>`;
+    const when = it.created_at ? new Date(it.created_at * 1000).toLocaleString('zh-CN', { hour12: false }) : '—';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${it.model || ''} · ${it.resolution || '—'} · ${it.duration ?? '—'}s · ${when}${it.draft ? ' · 样片' : ''}`;
+    const st = document.createElement('span');
+    st.className = 'st ' + it.status;
+    st.textContent = STATUS_MAP[it.status] || it.status;
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.alignItems = 'center';
+    right.style.gap = '6px';
+    right.appendChild(st);
+    if (it.status === 'queued' || it.status === 'succeeded' || it.status === 'failed') {
+      const del = document.createElement('button');
+      del.className = 'mini';
+      del.type = 'button';
+      del.textContent = it.status === 'queued' ? '取消' : '删除';
+      del.onclick = async (e) => {
+        e.stopPropagation();
+        del.textContent = '…';
+        const r = await fetch('/api/task/' + encodeURIComponent(it.id), { method: 'DELETE' });
+        const j = await r.json();
+        log(j.ok ? `${it.id} 已${it.status === 'queued' ? '取消' : '删除'}` : '操作失败：' + j.error, j.ok ? 'ok' : 'err');
+        loadTasks();
+      };
+      right.appendChild(del);
+    }
+    row.append(left, right, meta);
+    row.onclick = () => openCloudTask(it);
+    box.appendChild(row);
+  }
+}
+
+async function openCloudTask(it) {
+  let local = null;
+  try {
+    const r = await fetch('/api/task/' + encodeURIComponent(it.id));
+    if (r.ok) local = await r.json();
+  } catch {
+    /* 忽略：本地没有就用云端地址 */
+  }
+  const url = local?.file ? '/api/file/' + encodeURIComponent(local.file) : it.content?.video_url;
+  if (!url) {
+    log(`任务 ${it.id} 状态 ${STATUS_MAP[it.status] || it.status}，还没有可播放的产物`, 'err');
+    return;
+  }
+  $('emptyPanel').style.display = 'none';
+  $('result').classList.add('on');
+  $('player').src = url;
+  $('fileName').textContent = it.id;
+  $('mRes').textContent = it.resolution || '—';
+  $('mRatio').textContent = it.ratio || '—';
+  $('mDur').textContent = (it.duration ?? '—') + 's';
+  $('mTok').textContent = local?.tokens ? local.tokens.toLocaleString() : '—';
+  $('savePath').textContent = local?.path || '云端地址（24 小时内有效，建议下载转存）';
+  $('download').href = url;
+  lastTaskId = it.id;
+  $('draftAction').style.display = it.draft ? 'block' : 'none';
+  $('lastFrameBox').style.display = 'none';
+  log('载入任务 ' + it.id);
+}
+
+$('refreshTasks').onclick = () => loadTasks();
+
+/* 样片 → 正式片 */
+$('makeFinal').onclick = async () => {
+  if (!lastTaskId) return;
+  const btn = $('makeFinal');
+  btn.disabled = true;
+  btn.textContent = '提交中…';
+  log(`用样片 ${lastTaskId} 出正式片（分辨率/时长等参数由平台复用）`);
+  try {
+    const res = await (await fetch('/api/video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: cur.model,
+        draftFrom: lastTaskId,
+        generateAudio: $('genAudio').checked,
+        returnLastFrame: $('advLastFrame').checked,
+        callbackUrl: $('advCallback').value.trim() || undefined,
+      }),
+    })).json();
+    if (!res.ok) {
+      log(res.error || '提交失败', 'err');
+      return;
+    }
+    clearInterval(timer);
+    startedAt = Date.now();
+    $('run').disabled = true;
+    $('taskId').textContent = res.id;
+    setStage('生成中', 'run');
+    log('正式片任务：' + res.id, 'ok');
+    timer = setInterval(() => {
+      $('elapsed').textContent = Math.round((Date.now() - startedAt) / 1000) + 's';
+    }, 500);
+    poll(res.id);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '用这个样片出正式片';
+  }
+};
+
+/* ================= 生图视图 ================= */
+const IMG_RATIOS = ['1:1', '3:4', '4:3', '9:16', '16:9', '3:2', '2:3'];
+const IMG_LONG_SIDE = { '1K': 1024, '1.5K': 1536, '2K': 2048, '3K': 3072, '4K': 4096 };
+let imgModels = [];
+let imgCur = { model: 'seedream-4.0', size: '2K', ratio: '1:1', count: 1 };
+let imgRefs = [];
+let imgBusy = false;
+let imgStartedAt = 0;
+let imgTimer = null;
+let currentView = 'video';
+
+/* 模型表永远落后于方舟控制台：新开通的模型不一定在 IMAGE_MODELS 里，给一个填 ID 的出口 */
+const IMG_CUSTOM = '__custom__';
+let imgCustomId = (() => {
+  try {
+    return localStorage.getItem('ark.image.customId') || '';
+  } catch {
+    return '';
+  }
+})();
+
+const imgModelOf = (key) => {
+  if (key === IMG_CUSTOM) {
+    const id = imgCustomId.trim();
+    return {
+      key: IMG_CUSTOM,
+      id,
+      label: id || '自定义模型',
+      // 不知道能力就放开常见档位，让服务端去判，比前端瞎猜安全
+      sizes: ['1K', '1.5K', '2K', '3K', '4K'],
+      formats: ['jpeg', 'png'],
+      group: true,
+      maxImages: 15,
+      maxRefs: 14,
+      pricePerImage: null,
+    };
+  }
+  return imgModels.find((m) => m.key === key) || imgModels[0] || { label: '', maxRefs: 14, sizes: [] };
+};
+
+/* 404 = 该模型没开通或已下线。记在本地，下次打开还能看见「未开通」标记，不用再花时间撞一次。 */
+const IMG_DEAD_KEY = 'ark.image.unavailable.v1';
+function imgDeadSet() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(IMG_DEAD_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+function saveImgDead(set) {
+  try {
+    localStorage.setItem(IMG_DEAD_KEY, JSON.stringify([...set]));
+  } catch {
+    /* 隐私模式下写不进，忽略 */
+  }
+}
+function markImgDead(key) {
+  const s = imgDeadSet();
+  if (s.has(key)) return;
+  s.add(key);
+  saveImgDead(s);
+}
+function clearImgDead(key) {
+  const s = imgDeadSet();
+  if (!s.has(key)) return false;
+  s.delete(key);
+  saveImgDead(s);
+  return true;
+}
+function renderImgModelOptions() {
+  const dead = imgDeadSet();
+  const opts = imgModels
+    .map(
+      (m) =>
+        `<option value="${m.key}"${dead.has(m.key) ? ' data-dead="1"' : ''}>${escapeHtml(m.label)} · ${m.pricePerImage} 元/张${
+          dead.has(m.key) ? ' · 未开通' : ''
+        }</option>`,
+    )
+    .join('');
+  $('imgModel').innerHTML =
+    opts + `<option value="${IMG_CUSTOM}">＋ 自定义 Model ID…（刚开通的模型填这里）</option>`;
+  if (imgCur.model && [...$('imgModel').options].some((o) => o.value === imgCur.model)) {
+    $('imgModel').value = imgCur.model;
+  }
+}
+
+function imgLog(msg, cls = '') {
+  const box = $('imgLog');
+  if (!box) return;
+  const el = document.createElement('div');
+  const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  el.innerHTML = `<span class="t">${t}</span>${cls ? `<span class="${cls}">${escapeHtml(msg)}</span>` : escapeHtml(msg)}`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+/** 与服务端 computeSize 同算法，只用于显示预计像素，不参与请求。 */
+function imgPreviewPx(size, ratio) {
+  const long = IMG_LONG_SIDE[String(size).toUpperCase()];
+  if (!long) return String(size);
+  const [a, b] = String(ratio).split(':').map(Number);
+  if (!a || !b) return String(size);
+  const r8 = (n) => Math.max(64, Math.round(n / 8) * 8);
+  let w = a >= b ? long : (long * a) / b;
+  let h = a >= b ? (long * b) / a : long;
+  w = r8(w);
+  h = r8(h);
+  for (let i = 0; i < 8; i++) {
+    if (w * h < 1280 * 720) {
+      const k = Math.sqrt((1280 * 720) / (w * h));
+      w = r8(w * k);
+      h = r8(h * k);
+      continue;
+    }
+    if (w > 4096 || h > 4096) {
+      const k = Math.min(4096 / w, 4096 / h);
+      w = r8(w * k);
+      h = r8(h * k);
+      continue;
+    }
+    break;
+  }
+  return `${w}×${h}`;
+}
+
+function renderImageForm() {
+  const m = imgModelOf(imgCur.model);
+  const isCustom = imgCur.model === IMG_CUSTOM;
+  const customInput = $('imgCustomId');
+  if (customInput) {
+    customInput.style.display = isCustom ? '' : 'none';
+    if (document.activeElement !== customInput) customInput.value = imgCustomId;
+  }
+  if (!imgModels.length) return;
+  if (m.sizes && m.sizes.length && !m.sizes.includes(imgCur.size)) {
+    imgCur.size = m.sizes.includes('2K') ? '2K' : m.sizes[0];
+  }
+  if (!m.group) imgCur.count = 1;
+
+  chipGroup($('imgSizeChips'), m.sizes || [], imgCur.size, (v) => {
+    imgCur.size = v;
+    renderImageForm();
+  });
+  chipGroup($('imgRatioChips'), IMG_RATIOS, imgCur.ratio, (v) => {
+    imgCur.ratio = v;
+    renderImageForm();
+  });
+  chipGroup(
+    $('imgCountChips'),
+    m.group ? [1, 2, 3, 4] : [1],
+    imgCur.count,
+    (v) => {
+      imgCur.count = v;
+      renderImageForm();
+    },
+    () => '张',
+  );
+
+  const hasPrice = m.pricePerImage !== null && m.pricePerImage !== undefined;
+  $('imgModelHint').textContent = !hasPrice
+    ? '自定义 Model ID · 费用以官网为准'
+    : m.group
+      ? `${m.pricePerImage} 元/张 · 支持组图`
+      : `${m.pricePerImage} 元/张 · 不支持组图`;
+  $('imgSizeHint').textContent = `${(m.sizes || []).join(' / ')} → ${imgPreviewPx(imgCur.size, imgCur.ratio)}`;
+  $('imgCountHint').textContent = m.group ? '要几张就发几次请求，按实际张数计费' : '该模型只能出单张';
+  const per = m.pricePerImage;
+  $('imgRunHint').textContent = per == null
+    ? '费用以官网为准'
+    : imgCur.count > 1
+      ? `${per} × ${imgCur.count} ≈ ${(per * imgCur.count).toFixed(2)} 元`
+      : `${per} 元/张`;
+
+  if (currentView === 'image') {
+    $('cost').textContent = per ? '¥ ' + (per * imgCur.count).toFixed(2) : '—';
+    $('costLine').textContent = `${m.label} · ${imgCur.count} 张 · ${per}/张`;
+    $('spark').style.width = Math.min(100, (imgCur.count / 4) * 100) + '%';
+  }
+  renderImgRefs();
+}
+
+function renderImgRefs() {
+  const box = $('imgThumbs');
+  const max = imgModelOf(imgCur.model).maxRefs || 14;
+  $('imgRefCount').textContent = `${imgRefs.length} / ${max}`;
+  if (!imgRefs.length) {
+    box.innerHTML = '<span class="k" style="font-size:11.5px;grid-column:1/-1">还没有参考图（可选）</span>';
+    return;
+  }
+  box.innerHTML = '';
+  imgRefs.forEach((src, i) => {
+    const d = document.createElement('div');
+    d.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = src;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.onclick = () => {
+      imgRefs.splice(i, 1);
+      renderImgRefs();
+    };
+    d.append(img, btn);
+    box.appendChild(d);
+  });
+}
+
+function addImgFiles(files) {
+  const max = imgModelOf(imgCur.model).maxRefs || 14;
+  [...files].forEach((f) => {
+    if (!f.type.startsWith('image/')) return imgLog(`跳过非图片：${f.name}`, 'err');
+    if (f.size > 10 * 1024 * 1024) return imgLog(`${f.name} 超过单张 10MB 上限`, 'err');
+    if (imgRefs.length >= max) return imgLog(`参考图最多 ${max} 张`, 'err');
+    const fr = new FileReader();
+    fr.onload = () => {
+      imgRefs.push(fr.result);
+      renderImgRefs();
+      imgLog(`已加入参考图：${f.name}（${(f.size / 1024).toFixed(0)}KB）`);
+    };
+    fr.readAsDataURL(f);
+  });
+}
+
+function renderImgResults(res) {
+  const grid = $('imgGrid');
+  grid.innerHTML = '';
+  res.files.forEach((f) => {
+    const card = document.createElement('div');
+    card.className = 'imgcard';
+    const link = document.createElement('a');
+    link.href = f.localUrl;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    const img = document.createElement('img');
+    img.src = f.localUrl;
+    img.alt = f.name;
+    link.appendChild(img);
+    const meta = document.createElement('div');
+    meta.className = 'meta2';
+    meta.innerHTML = `<span>${escapeHtml(f.size || '')} · ${Math.round(f.bytes / 1024)}KB</span>`;
+    const dl = document.createElement('a');
+    dl.href = f.localUrl;
+    dl.download = f.name;
+    dl.textContent = '下载';
+    meta.appendChild(dl);
+    card.append(link, meta, buildImgActs(f, res.model));
+    grid.appendChild(card);
+  });
+  $('imgFileHint').textContent = `${res.files.length} 张 · ${res.size}`;
+  $('imgSavePath').textContent = res.files.length > 1 ? `${res.files[0].file}（共 ${res.files.length} 张）` : res.files[0].file;
+}
+
+function applyImageState(s) {
+  imgModels = Array.isArray(s.imageModels) ? s.imageModels : [];
+  if (!imgModels.length) {
+    $('imgModelHint').textContent = '服务端没有返回图片模型';
+    return;
+  }
+  imgCur.model = s.defaultImageModel || imgModels[0].key;
+  renderImgModelOptions();
+  $('imgModel').value = imgCur.model;
+  renderImageForm();
+}
+
+function switchView(view) {
+  currentView = view;
+  if (location.hash !== (view === 'image' ? '#image' : '#video')) {
+    history.replaceState(null, '', view === 'image' ? '#image' : '#video');
+  }
+  $('viewVideo').style.display = view === 'video' ? '' : 'none';
+  $('viewImage').style.display = view === 'image' ? '' : 'none';
+  $('tabVideo').classList.toggle('on', view === 'video');
+  $('tabImage').classList.toggle('on', view === 'image');
+  $('sectRun').style.display = view === 'video' ? '' : 'none';
+  $('sectCap').style.display = view === 'video' ? '' : 'none';
+  $('usageNote').innerHTML =
+    view === 'video'
+      ? '产物自动落到<br /><span class="mono">ark-cli/output/</span><br />留空提示词可只靠首帧出片。'
+      : '图片落到<br /><span class="mono">ark-cli/output/images/</span><br />参考图最多 14 张，单张 ≤10MB。';
+  if (view === 'image') renderImageForm();
+  else updateCost();
+}
+
+/* ================= 生图：提示词模板（独立一套，不和视频混） ================= */
+const IMG_TPL_KEY = 'ark.templates.image.v1';
+function imgTplList() {
+  try {
+    const v = JSON.parse(localStorage.getItem(IMG_TPL_KEY) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+function imgTplStore(list) {
+  try {
+    localStorage.setItem(IMG_TPL_KEY, JSON.stringify(list.slice(0, 80)));
+  } catch (e) {
+    imgLog('模板保存失败：' + e.message, 'err');
+  }
+}
+function renderImgTpl(pick) {
+  const list = imgTplList();
+  const sel = $('imgTplSelect');
+  sel.innerHTML =
+    '<option value="">提示词模板…</option>' +
+    list.map((t, i) => `<option value="${i}">${escapeHtml(t.name)}</option>`).join('');
+  if (pick !== undefined && pick !== null && list[pick]) sel.value = String(pick);
+  $('imgTplDel').style.display = sel.value ? '' : 'none';
+}
+function commitImgTpl() {
+  const nameBox = $('imgTplName');
+  const text = $('imgPrompt').value.trim();
+  const name = nameBox.value.trim();
+  if (!text) return imgLog('提示词是空的，没什么可存', 'err');
+  if (!name) return imgLog('模板名不能为空', 'err');
+  const list = imgTplList();
+  const idx = list.findIndex((t) => t.name === name);
+  if (idx >= 0) list[idx] = { name, text };
+  else list.unshift({ name, text });
+  imgTplStore(list);
+  nameBox.style.display = 'none';
+  renderImgTpl(idx >= 0 ? idx : 0);
+  imgLog(`${idx >= 0 ? '已覆盖' : '已保存'}模板：${name}`, 'ok');
+}
+$('imgTplSelect').onchange = () => {
+  const list = imgTplList();
+  const it = list[Number($('imgTplSelect').value)];
+  $('imgTplDel').style.display = $('imgTplSelect').value ? '' : 'none';
+  if (!it) return;
+  $('imgPrompt').value = it.text;
+  $('imgCharCount').textContent = it.text.trim().length + ' 字';
+  imgLog(`已套用模板：${it.name}`);
+};
+$('imgTplSave').onclick = () => {
+  const nameBox = $('imgTplName');
+  if (nameBox.style.display === 'none') {
+    nameBox.style.display = '';
+    const p = $('imgPrompt').value.trim();
+    nameBox.value = p ? p.slice(0, 14) : '';
+    nameBox.focus();
+    nameBox.select();
+    return;
+  }
+  commitImgTpl();
+};
+$('imgTplName').onkeydown = (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); commitImgTpl(); }
+  if (e.key === 'Escape') $('imgTplName').style.display = 'none';
+};
+$('imgTplDel').onclick = () => {
+  const i = Number($('imgTplSelect').value);
+  const list = imgTplList();
+  if (!list[i]) return;
+  const name = list[i].name;
+  list.splice(i, 1);
+  imgTplStore(list);
+  renderImgTpl(null);
+  imgLog(`已删除模板：${name}`);
+};
+
+/* ================= 生图：粘贴上传 ================= */
+function imgFilesFromClipboard(dt) {
+  return [...(dt?.items || [])]
+    .filter((i) => i.kind === 'file' && i.type.startsWith('image/'))
+    .map((i) => i.getAsFile())
+    .filter(Boolean);
+}
+document.addEventListener('paste', (e) => {
+  if (currentView !== 'image') return;
+  const files = imgFilesFromClipboard(e.clipboardData);
+  if (!files.length) return;
+  e.preventDefault();
+  files.forEach((f, i) => {
+    if (!f.name || f.name === 'image.png') {
+      try { Object.defineProperty(f, 'name', { value: `剪贴板-${Date.now()}-${i + 1}.png` }); } catch { /* 某些浏览器只读，忽略 */ }
+    }
+  });
+  addImgFiles(files);
+  imgLog('已从剪贴板读入 ' + files.length + ' 张图', 'ok');
+});
+$('imgPasteRef').onclick = async () => {
+  try {
+    if (!navigator.clipboard?.read) throw new Error('当前浏览器不支持读取剪贴板，请改用 Ctrl+V');
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for (const it of items) {
+      const type = it.types.find((t) => t.startsWith('image/'));
+      if (!type) continue;
+      const blob = await it.getType(type);
+      files.push(new File([blob], `剪贴板-${Date.now()}.${type.split('/')[1]}`, { type }));
+    }
+    if (!files.length) return imgLog('剪贴板里没有图片', 'err');
+    addImgFiles(files);
+  } catch (err) {
+    imgLog('读取剪贴板失败：' + err.message, 'err');
+  }
+};
+
+/* ================= 生图：历史记录 ================= */
+const IMG_HIST_KEY = 'ark.image.history.v1';
+function imgHistRead() {
+  try {
+    const v = JSON.parse(localStorage.getItem(IMG_HIST_KEY) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+function imgHistWrite(list) {
+  try {
+    localStorage.setItem(IMG_HIST_KEY, JSON.stringify(list.slice(0, 60)));
+  } catch (e) {
+    imgLog('历史保存失败：' + e.message, 'err');
+  }
+}
+function pushImgHist(entry) {
+  const list = imgHistRead();
+  list.unshift(entry);
+  imgHistWrite(list);
+  renderImgHist();
+}
+function fmtTs(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function renderImgHist() {
+  const box = $('imgHist');
+  const list = imgHistRead();
+  $('imgHistHint').textContent = list.length ? `${list.length} 条 · 点一条可回填参数` : '本地保存，关掉页面还在';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">还没有记录</div>';
+    return;
+  }
+  box.innerHTML = '';
+  list.forEach((h, i) => {
+    const d = document.createElement('div');
+    d.className = 'histitem';
+    d.innerHTML = `
+      <div class="hp">${escapeHtml(h.prompt || '（无提示词，纯参考图）')}</div>
+      <div class="hm">
+        <span>${escapeHtml(String(h.model || '').replace('Doubao-Seedream-', 'SD '))}</span>
+        <span>${escapeHtml(h.size || '')} ${escapeHtml(h.ratio || '')}</span>
+        <span>${h.got || 0} 张</span>
+        <b>¥${(h.cost ?? 0).toFixed ? h.cost.toFixed(2) : h.cost}</b>
+        <span>${fmtTs(h.ts)}</span>
+      </div>`;
+    d.onclick = () => {
+      $('imgPrompt').value = h.prompt || '';
+      $('imgCharCount').textContent = (h.prompt || '').trim().length + ' 字';
+      if (h.model && imgModels.some((m) => m.key === h.model)) {
+        imgCur.model = h.model;
+        $('imgModel').value = h.model;
+      } else if (h.model) {
+        // 自定义 Model ID 的历史：把 ID 填回去
+        imgCur.model = IMG_CUSTOM;
+        imgCustomId = h.model;
+        try {
+          localStorage.setItem('ark.image.customId', imgCustomId);
+        } catch {
+          /* 忽略 */
+        }
+      }
+      if (h.size) imgCur.size = h.size;
+      if (h.ratio) imgCur.ratio = h.ratio;
+      if (h.count) imgCur.count = h.count;
+      renderImageForm();
+      imgLog(`已回填历史 #${i + 1}：${h.model} ${h.size} ${h.ratio} ${h.count} 张`, 'ok');
+    };
+    box.appendChild(d);
+  });
+}
+$('imgHistClear').onclick = () => {
+  imgHistWrite([]);
+  renderImgHist();
+  imgLog('历史已清空');
+};
+
+/* ================= 生图：多模型对比 ================= */
+let cmpPicking = false;
+function renderImgCompare() {
+  const box = $('imgCompareBox');
+  if (!cmpPicking) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  const dead = imgDeadSet();
+  box.innerHTML = imgModels
+    .map(
+      (m) =>
+        `<label class="tg"><input type="checkbox" class="cmpchk" value="${m.key}" ${
+          m.key === imgCur.model ? 'checked' : ''
+        } /> ${escapeHtml(m.label.replace('Doubao-Seedream-', ''))} · ${m.pricePerImage}元${
+          dead.has(m.key) ? '<span style="color:var(--err)"> · 未开通</span>' : ''
+        }</label>`,
+    )
+    .join('');
+}
+$('imgCompare').onclick = () => {
+  if (!imgModels.length) return imgLog('还没有拿到模型列表', 'err');
+  if (!cmpPicking) {
+    cmpPicking = true;
+    renderImgCompare();
+    imgLog('勾选要对比的模型（未开通的会显示失败，不扣费），然后点「开始对比」');
+    return;
+  }
+  const picked = [...document.querySelectorAll('.cmpchk:checked')].map((c) => c.value);
+  if (picked.length < 2) return imgLog('至少勾 2 个模型才能对比', 'err');
+  cmpPicking = false;
+  renderImgCompare();
+  runImgCompare(picked);
+};
+async function runImgCompare(keys) {
+  if (imgBusy) return;
+  const prompt = $('imgPrompt').value.trim();
+  if (!prompt && !imgRefs.length) return imgLog('至少要有提示词，或加一张参考图', 'err');
+  const est = keys.reduce((s, k) => s + (imgModelOf(k).pricePerImage || 0), 0);
+
+  imgBusy = true;
+  $('imgRun').disabled = true;
+  $('imgCompare').disabled = true;
+  $('imgLog').innerHTML = '';
+  imgStartedAt = Date.now();
+  clearInterval(imgTimer);
+  imgTimer = setInterval(() => {
+    $('imgRunHint').textContent = `对比中 ${Math.round((Date.now() - imgStartedAt) / 1000)}s`;
+  }, 500);
+  imgLog(`并行对比 ${keys.length} 个模型 · 预计 ¥${est.toFixed(2)}`);
+
+  let res = null;
+  let netErr = null;
+  try {
+    const r = await fetch('/api/image-compare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        models: keys,
+        size: imgCur.size,
+        ratio: imgCur.ratio,
+        refImages: imgRefs.slice(),
+        watermark: $('imgWatermark').checked,
+      }),
+    });
+    res = await r.json();
+  } catch (e) {
+    netErr = e;
+  }
+
+  clearInterval(imgTimer);
+  imgBusy = false;
+  $('imgRun').disabled = false;
+  $('imgCompare').disabled = false;
+  $('imgRunHint').textContent = '';
+
+  if (netErr) return imgLog('网络错误：' + netErr.message, 'err');
+  if (!res || !res.ok) return imgLog((res && res.error) || '对比失败', 'err');
+
+  const secs = Math.round((Date.now() - imgStartedAt) / 1000);
+  imgLog(`对比完成：${res.got} 张，用时 ${secs}s，费用 ≈ ¥${res.cost}`, 'ok');
+  (res.errors || []).forEach((e) => imgLog('失败 ' + e, 'err'));
+  (res.groups || []).forEach((g) => {
+    if (g.error && /HTTP\s*404/.test(g.error)) markImgDead(g.modelKey);
+    if (g.files && g.files.length) clearImgDead(g.modelKey);
+  });
+  renderImgModelOptions();
+  renderImgCompare();
+
+  renderImgCompareResults(res);
+  pushImgHist({
+    ts: Date.now(),
+    prompt,
+    model: '多模型对比',
+    size: res.groups[0]?.files?.[0]?.size || imgCur.size,
+    ratio: imgCur.ratio,
+    count: keys.length,
+    got: res.got,
+    cost: res.cost,
+    kind: 'compare',
+  });
+  renderImageForm();
+}
+
+function renderImgCompareResults(res) {
+  const grid = $('imgGrid');
+  grid.innerHTML = '';
+  res.groups.forEach((g) => {
+    const card = document.createElement('div');
+    card.className = 'imgcard';
+    const head = document.createElement('div');
+    head.className = 'tagline';
+    head.textContent = g.model.replace('Doubao-Seedream-', 'SD ') + (g.files.length ? '' : ' · 失败');
+    card.appendChild(head);
+
+    if (!g.files.length) {
+      const p = document.createElement('div');
+      p.style.cssText = 'padding:10px;font-size:10.5px;color:var(--dim);line-height:1.6';
+      p.textContent = g.error || '无结果';
+      card.appendChild(p);
+      grid.appendChild(card);
+      return;
+    }
+    const f = g.files[0];
+    const link = document.createElement('a');
+    link.href = f.localUrl;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    const img = document.createElement('img');
+    img.src = f.localUrl;
+    link.appendChild(img);
+    card.appendChild(link);
+    const meta = document.createElement('div');
+    meta.className = 'meta2';
+    meta.innerHTML = `<span>${escapeHtml(f.size || '')} · ${Math.round(f.bytes / 1024)}KB</span>`;
+    card.appendChild(meta);
+    card.appendChild(buildImgActs(f, String(g.model || '').replace('Doubao-Seedream-', 'SD ')));
+    grid.appendChild(card);
+  });
+  $('imgFileHint').textContent = `对比 ${res.groups.length} 个模型 · ${res.got} 张`;
+  $('imgSavePath').textContent = '产物目录：ark-cli/output/images/';
+}
+
+function imgDataUrl(url) {
+  return fetch(url)
+    .then((r) => r.blob())
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = reject;
+          fr.readAsDataURL(blob);
+        }),
+    );
+}
+
+/** 产物卡片下方的三个动作按钮。 */
+function buildImgActs(f, label) {
+  const acts = document.createElement('div');
+  acts.className = 'acts';
+
+  const asRef = document.createElement('button');
+  asRef.type = 'button';
+  asRef.textContent = '以此为参考';
+  asRef.onclick = async () => {
+    const max = imgModelOf(imgCur.model).maxRefs || 14;
+    if (imgRefs.length >= max) return imgLog(`参考图最多 ${max} 张`, 'err');
+    try {
+      const src = await imgDataUrl(f.localUrl);
+      imgRefs.push(src);
+      renderImgRefs();
+      imgLog('已加入生图参考图', 'ok');
+    } catch (e) {
+      imgLog('读取图片失败：' + e.message, 'err');
+    }
+  };
+
+  const asFirst = document.createElement('button');
+  asFirst.type = 'button';
+  asFirst.textContent = '用作视频首帧';
+  asFirst.onclick = async () => {
+    try {
+      const src = await imgDataUrl(f.localUrl);
+      setVideoFirstFrame(src, label || f.name);
+      switchView('video');
+      imgLog('已设为视频首帧，已切到视频页', 'ok');
+    } catch (e) {
+      imgLog('设置首帧失败：' + e.message, 'err');
+    }
+  };
+
+  const asVref = document.createElement('button');
+  asVref.type = 'button';
+  asVref.textContent = '用作视频参考图';
+  asVref.onclick = async () => {
+    if (refImages.length >= 30) return imgLog('视频参考图最多 30 张', 'err');
+    try {
+      const src = await imgDataUrl(f.localUrl);
+      refImages.push(src);
+      renderRefImages();
+      switchView('video');
+      imgLog('已加入视频参考图，已切到视频页', 'ok');
+    } catch (e) {
+      imgLog('加入参考图失败：' + e.message, 'err');
+    }
+  };
+
+  acts.append(asRef, asFirst, asVref);
+  return acts;
+}
+
+/** 把一张 dataURL 塞进视频首帧槽，DOM 同步更新。 */
+function setVideoFirstFrame(src, label) {
+  frames.first = src;
+  const drop = $('dropFirst');
+  drop.querySelectorAll('img,.clear').forEach((n) => n.remove());
+  const img = document.createElement('img');
+  img.src = src;
+  drop.appendChild(img);
+  const btn = document.createElement('button');
+  btn.className = 'clear';
+  btn.textContent = '×';
+  btn.type = 'button';
+  btn.onclick = (e) => {
+    e.preventDefault();
+    frames.first = null;
+    img.remove();
+    btn.remove();
+    renderChips();
+  };
+  drop.appendChild(btn);
+  if (cur.ratio !== 'adaptive') {
+    cur.ratio = 'adaptive';
+    renderChips();
+  }
+  log(`已从生图设为视频首帧：${label || ''}`);
+}
+
+$('tabVideo').onclick = () => switchView('video');
+$('tabImage').onclick = () => switchView('image');
+$('imgModel').onchange = (e) => {
+  imgCur.model = e.target.value;
+  renderImageForm();
+  if (imgCur.model === IMG_CUSTOM) setTimeout(() => $('imgCustomId').focus(), 0);
+};
+$('imgCustomId').oninput = (e) => {
+  imgCustomId = e.target.value.trim();
+  try {
+    localStorage.setItem('ark.image.customId', imgCustomId);
+  } catch {
+    /* 隐私模式忽略 */
+  }
+  renderImageForm();
+};
+$('imgPrompt').oninput = (e) => {
+  $('imgCharCount').textContent = e.target.value.trim().length + ' 字';
+};
+$('imgPickRef').onclick = () => $('imgFileRef').click();
+$('imgFileRef').onchange = (e) => {
+  addImgFiles(e.target.files);
+  e.target.value = '';
+};
+$('imgThumbs').addEventListener('dragover', (e) => e.preventDefault());
+$('imgThumbs').addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length) addImgFiles(e.dataTransfer.files);
+});
+
+$('imgReset').onclick = () => {
+  $('imgPrompt').value = '';
+  $('imgCharCount').textContent = '0 字';
+  imgRefs = [];
+  renderImgRefs();
+  $('imgLog').innerHTML = '';
+  renderImageForm();
+};
+
+$('imgRun').onclick = async () => {
+  if (imgBusy) return;
+  const prompt = $('imgPrompt').value.trim();
+  if (!prompt && !imgRefs.length) {
+    imgLog('至少要有提示词，或加一张参考图', 'err');
+    return;
+  }
+  const m = imgModelOf(imgCur.model);
+  const modelArg = imgCur.model === IMG_CUSTOM ? imgCustomId.trim() : imgCur.model;
+  if (!modelArg) {
+    imgLog('选了「自定义 Model ID」但没填 ID，例：doubao-seedream-5-0-flash-260915', 'err');
+    return;
+  }
+  imgBusy = true;
+  $('imgRun').disabled = true;
+  $('imgLog').innerHTML = '';
+  imgStartedAt = Date.now();
+  clearInterval(imgTimer);
+  imgTimer = setInterval(() => {
+    $('imgRunHint').textContent = `生成中 ${Math.round((Date.now() - imgStartedAt) / 1000)}s`;
+  }, 500);
+  imgLog(`提交 ${m.id} · ${imgCur.size} · ${imgCur.ratio} · 连发 ${imgCur.count} 次 · 参考图 ${imgRefs.length} 张`);
+  imgLog('同步接口，等结果（通常 10–40s）…');
+
+  let res = null;
+  let netErr = null;
+  try {
+    const r = await fetch('/api/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        model: modelArg,
+        size: imgCur.size,
+        ratio: imgCur.ratio,
+        count: imgCur.count,
+        refImages: imgRefs.slice(),
+        watermark: $('imgWatermark').checked,
+      }),
+    });
+    res = await r.json();
+  } catch (e) {
+    netErr = e;
+  }
+
+  clearInterval(imgTimer);
+  imgBusy = false;
+  $('imgRun').disabled = false;
+
+  if (netErr) {
+    imgLog('网络错误：' + netErr.message, 'err');
+    renderImageForm();
+    return;
+  }
+  if (!res || !res.ok) {
+    const msg = (res && res.error) || '生成失败';
+    imgLog(msg, 'err');
+    if (/HTTP\s*404/.test(msg)) {
+      if (imgCur.model === IMG_CUSTOM) {
+        imgLog('这个 ID 不存在或未开通。去控制台「开通管理」核对模型名，注意 ID 带日期后缀', 'hl');
+        imgLog('例：doubao-seedream-5-0-flash-260915 / doubao-seedream-5-0-pro-260628', '');
+      } else {
+        const failedLabel = imgModelOf(imgCur.model).label;
+        markImgDead(imgCur.model);
+        const fallback = imgModels.find((x) => x.key !== imgCur.model && !imgDeadSet().has(x.key));
+        if (fallback) {
+          imgCur.model = fallback.key;
+          renderImgModelOptions();
+          imgLog(`${failedLabel} 已标记为「未开通」，以后在模型列表里会带标记`, 'hl');
+          imgLog(`自动切到 ${fallback.label}（${fallback.pricePerImage} 元/张），可直接再点「生成图片」`, 'hl');
+          imgLog('要真正开通：方舟控制台 → 开通管理 → 视觉模型 → 勾选对应 Seedream 模型', '');
+        } else {
+          renderImgModelOptions();
+          imgLog('所有图片模型都标记为未开通，去控制台开通后刷新页面', 'err');
+        }
+      }
+    }
+    renderImageForm();
+    return;
+  }
+  const secs = Math.round((Date.now() - imgStartedAt) / 1000);
+  imgLog(`完成 ${res.got} 张（请求 ${res.requested} 张），用时 ${secs}s`, 'ok');
+  if (clearImgDead(imgCur.model)) {
+    renderImgModelOptions();
+    imgLog(`${imgModelOf(imgCur.model).label} 这次成功了，已去掉「未开通」标记`, 'ok');
+  }
+  if (res.cost !== null && res.cost !== undefined) imgLog(`费用 ≈ ${res.cost} 元（按实际 ${res.got} 张计）`, 'hl');
+  (res.errors || []).forEach((e) => imgLog(e, 'err'));
+  renderImgResults(res);
+  pushImgHist({
+    ts: Date.now(),
+    prompt,
+    model: modelArg,
+    size: res.size,
+    ratio: imgCur.ratio,
+    count: res.requested,
+    got: res.got,
+    cost: res.cost ?? 0,
+    kind: 'single',
+  });
+  renderImageForm();
+};
+
+loadState().catch((e) => log('初始化失败：' + e.message, 'err'));
+loadPresets();
+renderImgTpl();
+renderImgHist();
+if (location.hash === '#image') switchView('image');
+setTimeout(() => loadAccount(true), 600);
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "ark-cli",
+  "version": "0.1.0",
+  "description": "火山方舟 Seedance / Seedream 本地出片控制台：零依赖 Node CLI + 单文件网页，支持文生视频、首尾帧、参考图/视频、视频编辑、多模型对比出图",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "ark": "./bin/ark.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "selftest": "node bin/ark.js --selftest",
+    "ui": "node bin/ark.js ui --open"
+  },
+  "keywords": [
+    "seedance",
+    "seedream",
+    "volcengine",
+    "ark",
+    "text-to-video",
+    "image-generation",
+    "ai-video",
+    "cli",
+    "zero-dependency"
+  ],
+  "files": [
+    "bin",
+    "src",
+    "web",
+    "docs/seedance-2-5.md",
+    "docs/seedream.md",
+    "README.md",
+    "LICENSE"
+  ]
+}
